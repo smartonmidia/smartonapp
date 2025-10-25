@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <title>Gerenciador de Mídias — Unificado</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <!-- Firebase compat (apenas Firestore) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+
+
+    <style>
+         :root {
+            --bg: #f6f8fb;
+            --surface: #fff;
+            --muted: #6b7280;
+            --primary: #1058a2;
+            --danger: #ef4444;
+            --radius: 12px;
+            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+        }
+        
+        * {
+            box-sizing: border-box
+        }
+        
+        html,
+        body {
+            height: 100%;
+            margin: 0
+        }
+        
+        body {
+            padding: 28px;
+            background: linear-gradient(180deg, var(--bg), #eef3f8);
+            color: #072433
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 20px
+        }
+        
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), #0b6fb0);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700
+        }
+        
+        h1 {
+            margin: 0;
+            font-size: 18px
+        }
+        
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            font-size: 13px
+        }
+        
+        .container {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 20px;
+            align-items: start
+        }
+        
+        @media (max-width:980px) {
+            .container {
+                grid-template-columns: 1fr
+            }
+        }
+        
+        .panel {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 16px;
+            box-shadow: 0 8px 28px rgba(11, 22, 39, 0.05);
+            border: 1px solid rgba(10, 20, 30, 0.03)
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px
+        }
+        
+        .search {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            align-items: center
+        }
+        
+        .search input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid #e6eef6;
+            background: #fbfeff
+        }
+        
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600
+        }
+        
+        .btn.ghost {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid rgba(16, 88, 162, 0.12)
+        }
+        
+        .list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 6px
+        }
+        
+        .card {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            padding: 12px;
+            border-radius: 10px;
+            background: linear-gradient(180deg, #fff, #fbfeff);
+            border: 1px solid #f0f6fb
+        }
+        
+        .thumb {
+            width: 140px;
+            height: 84px;
+            border-radius: 8px;
+            overflow: hidden;
+            flex: 0 0 140px;
+            background: linear-gradient(180deg, #eef7ff, #f6fcff);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--muted)
+        }
+        
+        .meta {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px
+        }
+        
+        .meta .title {
+            font-weight: 700;
+            font-size: 15px;
+            color: #052b3a
+        }
+        
+        .meta .info {
+            color: var(--muted);
+            font-size: 13px
+        }
+        
+        .actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 6px;
+            flex-wrap: wrap
+        }
+        
+        .action-btn {
+            background: #f0f7ff;
+            color: #0b6fb0;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600
+        }
+        
+        .action-btn.copy {
+            background: #eefaf6;
+            color: #0b8f7b
+        }
+        
+        .action-btn.danger {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.08)
+        }
+        
+        .side {
+            display: flex;
+            flex-direction: column;
+            gap: 12px
+        }
+        
+        .small {
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #e6eef6;
+            background: #fbfeff
+        }
+        
+        .muted {
+            color: var(--muted);
+            font-size: 13px
+        }
+        
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 12, 20, 0.45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 80
+        }
+        
+        .modal-backdrop.show {
+            display: flex
+        }
+        
+        .modal {
+            width: 100%;
+            max-width: 680px;
+            border-radius: 14px;
+            padding: 20px;
+            background: linear-gradient(180deg, var(--surface), #fbfeff);
+            box-shadow: 0 30px 80px rgba(11, 22, 39, 0.25)
+        }
+        
+        .toast {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            background: #0b6fb0;
+            color: white;
+            padding: 10px 14px;
+            border-radius: 10px;
+            z-index: 90;
+            display: none
+        }
+        
+        .toast.show {
+            display: block
+        }
+        
+        .disabled {
+            opacity: .5;
+            pointer-events: none
+        }
+        
+        .item-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #fff;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #f0f6fb
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="brand">
+            <div class="logo" role="img" aria-label="Logo da empresa">MD</div>
+            <div>
+                <h1>Gerenciador de Mídias</h1>
+                <p class="subtitle">Unificado — mídias, upload para Catbox, frases de rodapé e edição simples</p>
+            </div>
+        </div>
+
+        <div style="text-align:right;color:var(--muted);font-size:13px">Usuário autenticado</div>
+    </header>
+
+    <main class="container">
+        <!-- left -->
+        <section class="panel">
+            <div class="controls-row">
+                <div class="search">
+                    <input id="searchInput" type="search" placeholder="Pesquisar por nome, URL ou tipo..." oninput="listarMidias()" />
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="refreshBtn" class="btn.ghost btn" onclick="listarMidias()" style="background:#f7fbff;color:var(--primary);border:1px solid rgba(16,88,162,0.06)">Atualizar</button>
+                    <button id="openForm" class="btn">Adicionar / Enviar Mídia</button>
+                </div>
+            </div>
+
+            <div id="list" class="list"></div>
+            <div id="noMedia" class="muted" style="padding:12px; display:none;">Nenhuma mídia cadastrada.</div>
+        </section>
+
+        <!-- right -->
+        <aside class="side">
+            <div class="panel">
+                <h3 style="margin:0 0 8px 0">Frases de Rodapé</h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <input id="novaFrase" class="small" placeholder="Digite uma nova frase..." maxlength="120" />
+                    <button id="addFraseBtn" class="btn" onclick="adicionarFrase()">Adicionar</button>
+                </div>
+                <div id="fraseList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
+            </div>
+
+            <div class="panel">
+                <h3 style="margin:0 0 8px 0">Ações Rápidas</h3>
+                <div class="muted">Upload em background usa Catbox (proxy público). Em produção, use backend próprio.</div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-direction:column;align-items:stretch">
+                    <button id="chooseFileBtn" class="btn.ghost">Selecionar Arquivo</button>
+                    <button class="btn.ghost" onclick="limparFormulario()">Limpar Form</button>
+                    <div style="margin-top:8px" class="muted">Observação: Como não há autenticação, todas as operações gravam diretamente no Firestore. Gerencie regras de segurança no console do Firebase.</div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Modal -->
+    <div id="backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal" role="document">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <div>
+                    <strong style="font-size:16px">Adicionar / Enviar Mídia</strong>
+                    <div class="muted" style="margin-top:6px">Cole link (Drive/Catbox) ou selecione arquivo local.</div>
+                </div>
+                <div style="display:flex;gap:10px;align-items:center">
+                    <label class="muted">Intervalo entre slides (ms):</label>
+                    <input id="delayMsInput" type="number" class="small" placeholder="5000" value="5000" />
+                </div>
+                <div><button id="closeModal" class="btn.ghost">Fechar</button></div>
+            </div>
+
+            <div style="display:flex;gap:12px;flex-direction:column">
+                <input id="nomeMidia" type="text" class="small" placeholder="Nome da mídia — ex: Promo Outubro" />
+                <!-- Dentro do modal, logo abaixo do input de link -->
+                <input id="linkMidia" type="text" class="small" placeholder="Cole o link do Google Drive ou Catbox aqui" onblur="detectaTipoPorUrl()" />
+
+                <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+                    <label class="muted">Intervalo entre slides (ms):</label>
+                    <input id="delayMsInput" type="number" class="small" placeholder="5000" value="5000" min="1000" />
+                </div>
+
+                <input id="ordemMidia" type="number" class="small" placeholder="Ordem (ex: 1)" />
+                <div style="display:flex;gap:10px;align-items:center">
+                    <label style="display:flex;gap:8px;align-items:center"><input id="ativoMidia" type="checkbox" checked /> <span class="muted">Ativo</span></label>
+                    <label style="display:flex;gap:8px;align-items:center"><input id="salvarAuto" type="checkbox" /> <span class="muted">Salvar automático após upload</span></label>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px">
+                <button id="saveLinkBtn" class="btn" onclick="adicionarMidia()">Salvar Mídia (link)</button>
+                <button id="chooseFileBtnModal" class="btn.ghost">Selecionar arquivo local</button>
+                <button class="btn.ghost" onclick="limparFormulario()">Limpar</button>
+            </div>
+
+            <div id="bgStatus" class="muted" style="margin-top:4px;display:none"></div>
+        </div>
+    </div>
+    </div>
+
+    <input id="fileInput" type="file" accept="image/*,video/*" style="display:none" />
+    <div id="toast" class="toast"></div>
+
+    <script>
+        /* ========== SUA firebaseConfig AQUI ========== */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDE1V9V4w0YbqJBgkeI7F4fN3sW_YokVBQ",
+            authDomain: "midiaindoor-d2109.firebaseapp.com",
+            databaseURL: "https://midiaindoor-d2109-default-rtdb.firebaseio.com",
+            projectId: "midiaindoor-d2109",
+            storageBucket: "midiaindoor-d2109.appspot.com",
+            messagingSenderId: "549200922225",
+            appId: "1:549200922225:web:731664468eb51fbdf2bdd0"
+        };
+
+        function escapeHtml(s) {
+            return String(s || '').replace(/[&<>"']/g, function(m) {
+                return ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[m]);
+            });
+        }
+
+        // inicializa Firebase
+        if (!firebaseConfig) {
+            console.error('firebaseConfig não encontrado.');
+        }
+        firebase.initializeApp(firebaseConfig);
+
+        // clientes que vamos usar
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // função util: obtém empresa da querystring ou fallback
+        function empresaFromQueryOrDefault() {
+            return decodeURIComponent(new URLSearchParams(window.location.search).get("empresa") || "empresa1");
+        }
+
+        // Só inicializa a UI que depende de dados/auth depois que soubermos quem é o usuário
+        auth.onAuthStateChanged(async(user) => {
+            if (!user) {
+                // usuário não autenticado -> redireciona para login com next (opcional)
+                const next = encodeURIComponent(window.location.pathname + window.location.search);
+                window.location.href = `login.html?next=${next}`;
+                return;
+            }
+
+            // se chegou aqui, está autenticado
+            console.log('Autenticado:', user.email || user.uid);
+
+            // 🔹 1. Recupera o empresaId do localStorage
+            let empresaId = localStorage.getItem('empresaId');
+
+            // 🔹 2. Caso não exista, tenta obter via URL (?empresaId=)
+            if (!empresaId) {
+                const params = new URLSearchParams(window.location.search);
+                empresaId = params.get('empresaId') || 'empresa1'; // define padrão se nada encontrado
+                localStorage.setItem('empresaId', empresaId); // salva para as próximas páginas
+            }
+
+            // 🔹 3. Atualiza o cabeçalho (se existir)
+            const userLabel = document.getElementById('userLabel');
+            const empresaLabel = document.getElementById('empresaLabel');
+            if (userLabel) userLabel.textContent = user.email || user.displayName || user.uid;
+            if (empresaLabel) empresaLabel.textContent = 'empresa: ' + empresaId;
+
+            // 🔹 4. Exibe no console para depuração
+            console.log('Empresa ativa:', empresaId);
+
+            // 🔹 5. Agora que temos auth + empresa definida, inicializa funções que dependem disso
+            try {
+                await listarFrases(empresaId);
+                await listarMidias(empresaId);
+            } catch (e) {
+                console.error('Erro init após auth:', e);
+            }
+        });
+
+        /****************
+         * UI HELPERS
+         ****************/
+        const backdrop = document.getElementById('backdrop');
+        const openFormBtn = document.getElementById('openForm');
+        const closeModalBtn = document.getElementById('closeModal');
+        const toastEl = document.getElementById('toast');
+
+        function showModal(show) {
+            if (!backdrop) return;
+            backdrop.classList.toggle('show', !!show);
+            backdrop.setAttribute('aria-hidden', !show);
+        }
+
+        if (openFormBtn) {
+            openFormBtn.addEventListener('click', () => showModal(true));
+        }
+
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', () => showModal(false));
+        }
+
+        function toast(msg, time = 1800) {
+            if (!toastEl) return;
+            toastEl.textContent = msg;
+            toastEl.classList.add('show');
+            setTimeout(() => toastEl.classList.remove('show'), time);
+        }
+
+        function showStatus(msg, isError = false, persistent = false) {
+            const el = document.getElementById('bgStatus');
+            if (!el) return;
+            el.style.display = 'block';
+            el.style.color = isError ? 'var(--danger)' : '';
+            el.textContent = msg;
+            if (!persistent) setTimeout(() => el.style.display = 'none', 2200);
+        }
+
+        function limparFormulario() {
+            const n = document.getElementById('nomeMidia');
+            const l = document.getElementById('linkMidia');
+            const o = document.getElementById('ordemMidia');
+            const a = document.getElementById('ativoMidia');
+            const s = document.getElementById('salvarAuto');
+            if (n) n.value = '';
+            if (l) l.value = '';
+            if (o) o.value = '';
+            if (a) a.checked = true;
+            if (s) s.checked = false;
+            showStatus('Formulário limpo.');
+        }
+
+        /****************
+         * UTIL
+         ****************/
+        // extrai ID genérico /d/... (usado para Drive)
+        function extrairID(link) {
+            const m = link && link.match(/\/d\/([\w-]+)/);
+            return m ? m[1] : null;
+        }
+
+        // extrai ID de Google Slides (presentation)
+        function extrairGoogleSlides(link) {
+            if (!link) return null;
+            let m = link.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+            if (m) return m[1];
+            m = link.match(/\/d\/e\/([a-zA-Z0-9_-]+)\/pub/);
+            if (m) return m[1];
+            return null;
+        }
+
+        function extractFilenameFromUrl(url) {
+            try {
+                const u = new URL(url);
+                const p = u.pathname.split('/');
+                return p.pop() || p.pop();
+            } catch {
+                return null;
+            }
+        }
+
+        function extFromUrl(url) {
+            try {
+                const u = new URL(url);
+                const m = u.pathname.toLowerCase().match(/\.([a-z0-9]{2,6})(\?.*)?$/);
+                return m ? m[1] : null;
+            } catch {
+                return null;
+            }
+        }
+
+        // --- detecta tipo (imagem / video / site) ---
+        function detectaTipoPorUrl() {
+            const linkEl = document.getElementById('linkMidia');
+            if (!linkEl) return;
+            const link = (linkEl.value || '').trim();
+            linkEl.dataset.inferredType = '';
+
+            if (!link) return;
+
+            const ext = extFromUrl(link);
+
+            // detectar Google Slides primeiro (para não confundir com /d/ genérico)
+            const slides = extrairGoogleSlides(link);
+            if (slides) {
+                linkEl.dataset.inferredType = 'SITE';
+                linkEl.dataset.isSlides = '1';
+                return;
+            } else {
+                linkEl.dataset.isSlides = '';
+            }
+
+            const drive = extrairID(link);
+            if (drive) {
+                linkEl.dataset.inferredType = 'IMAGEM';
+                return;
+            }
+
+            if (ext) {
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+                    linkEl.dataset.inferredType = 'IMAGEM';
+                    return;
+                }
+                if (['mp4', 'webm', 'ogg', 'mov', 'mkv'].includes(ext)) {
+                    linkEl.dataset.inferredType = 'VIDEO';
+                    return;
+                }
+            }
+
+            try {
+                new URL(link);
+                linkEl.dataset.inferredType = 'SITE';
+            } catch (e) {
+                linkEl.dataset.inferredType = '';
+            }
+        }
+
+        /****************
+         * LIST MEDIA
+         ****************/
+        async function listarMidias(passedEmpresaId) {
+            // prioridade: argumento -> query param 'empresa' -> localStorage -> default
+            const urlParams = new URLSearchParams(window.location.search);
+            const empresaId = passedEmpresaId || urlParams.get('empresa') || localStorage.getItem('empresaId') || 'empresa1';
+
+            const container = document.getElementById('list');
+            if (!container) return;
+            container.innerHTML = '';
+            const searchEl = document.getElementById('searchInput');
+            const search = (searchEl ? (searchEl.value || '') : '').toLowerCase().trim();
+            let count = 0;
+
+            let qSnap;
+            try {
+                qSnap = await db
+                    .collection('empresas')
+                    .doc(empresaId)
+                    .collection('midias')
+                    .orderBy('ordem')
+                    .get();
+            } catch (e) {
+                console.error('listarMidias query error', e);
+                container.innerHTML = `<div class="small-muted">Erro ao carregar mídias: ${escapeHtml(e.message || 'Verifique permissões/índices')}.</div>`;
+                return;
+            }
+
+            for (const doc of qSnap.docs) {
+                const data = doc.data();
+                const id = doc.id;
+                const nome = data.nome || extractFilenameFromUrl(data.url) || 'Sem nome';
+                const url = data.url || '';
+
+                let tipo = (data.tipo || '').toUpperCase();
+                if (!tipo) tipo = (extFromUrl(url) === 'mp4' ? 'VIDEO' : (extFromUrl(url) ? 'IMAGEM' : 'SITE'));
+
+                const ordem = data.ordem || 0;
+                const ativo = data.ativo !== false;
+
+                const hay = (nome + ' ' + url + ' ' + tipo).toLowerCase();
+                if (search && !hay.includes(search)) continue;
+                count++;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                const thumb = document.createElement('div');
+                thumb.className = 'thumb';
+
+                const isSlidesEmbed = (data.embed && data.embedType === 'slides') || /docs\.google\.com\/presentation\/d\/[^\/]+\/embed/.test(url);
+
+                if (isSlidesEmbed) {
+                    const srcUrl = (data.embedUrl && data.embedUrl.trim()) ? data.embedUrl : url;
+                    const iframe = document.createElement('iframe');
+                    iframe.src = srcUrl;
+                    iframe.width = '100%';
+                    iframe.height = '100%';
+                    iframe.frameBorder = '0';
+                    iframe.allow = 'autoplay; encrypted-media; fullscreen';
+                    iframe.style.border = '0';
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    thumb.appendChild(iframe);
+
+                } else if (tipo === 'IMAGEM' || url.match(/\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i)) {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = nome;
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    thumb.appendChild(img);
+                } else if (tipo === 'VIDEO' || url.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/i)) {
+                    thumb.textContent = 'Vídeo';
+                    generateVideoThumbnail(url, 320, 180)
+                        .then(dataUrl => {
+                            if (dataUrl) {
+                                // só atualiza o thumb dentro do contexto deste loop
+                                thumb.innerHTML = '';
+                                const img = document.createElement('img');
+                                img.src = dataUrl;
+                                img.alt = nome;
+                                img.style.width = '100%';
+                                img.style.height = '100%';
+                                img.style.objectFit = 'cover';
+                                thumb.appendChild(img);
+                            }
+                        })
+                        .catch(() => {});
+                } else if (tipo === 'SITE') {
+                    thumb.innerHTML = `<div style="text-align:center;padding:6px;color:var(--muted);font-size:13px">Site</div>`;
+                } else {
+                    thumb.textContent = 'Arquivo';
+                }
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                const title = document.createElement('div');
+                title.className = 'title';
+                title.textContent = nome;
+                const info = document.createElement('div');
+                info.className = 'info';
+                info.textContent = `${tipo} • Ordem: ${ordem} • ${ativo ? 'Ativo' : 'Inativo'}`;
+
+                const actions = document.createElement('div');
+                actions.className = 'actions';
+
+                const ver = document.createElement('button');
+                ver.className = 'action-btn';
+                ver.textContent = 'Abrir';
+                ver.onclick = () => window.open(url, '_blank');
+
+                const copiar = document.createElement('button');
+                copiar.className = 'action-btn copy';
+                copiar.textContent = 'Copiar link';
+                copiar.onclick = async() => {
+                    try {
+                        await navigator.clipboard.writeText(url);
+                        toast('Link copiado');
+                    } catch {
+                        showStatus('Não foi possível copiar', true, true);
+                    }
+                };
+
+                const editar = document.createElement('button');
+                editar.className = 'action-btn';
+                editar.textContent = 'Editar nome/ordem';
+                editar.onclick = async() => {
+                    const novoNome = prompt('Editar nome da mídia:', nome);
+                    if (novoNome === null) return;
+                    const novoOrdem = prompt('Editar ordem (número):', ordem);
+                    if (novoOrdem === null) return;
+                    const nv = novoNome.trim() || 'Sem nome';
+                    const no = parseInt(novoOrdem);
+                    if (isNaN(no)) return alert('Ordem inválida');
+
+                    try {
+                        await db.collection('empresas')
+                            .doc(empresaId)
+                            .collection('midias')
+                            .doc(id)
+                            .update({
+                                nome: nv,
+                                ordem: no
+                            });
+                        listarMidias(empresaId);
+                        showStatus('Atualizado.');
+                    } catch (e) {
+                        showStatus('Erro: ' + e.message, true, true);
+                    }
+                };
+
+                const excluir = document.createElement('button');
+                excluir.className = 'action-btn danger';
+                excluir.textContent = 'Excluir';
+                excluir.onclick = async() => {
+                    if (!confirm(`Excluir "${nome}"?`)) return;
+                    try {
+                        await db.collection('empresas')
+                            .doc(empresaId)
+                            .collection('midias')
+                            .doc(id)
+                            .delete();
+                        listarMidias(empresaId);
+                        showStatus('Excluído.');
+                    } catch (e) {
+                        showStatus('Erro: ' + e.message, true, true);
+                    }
+                };
+
+                actions.appendChild(ver);
+                actions.appendChild(copiar);
+                actions.appendChild(editar);
+                actions.appendChild(excluir);
+
+                meta.appendChild(title);
+                meta.appendChild(info);
+                meta.appendChild(actions);
+
+                card.appendChild(thumb);
+                card.appendChild(meta);
+                container.appendChild(card);
+            }
+
+            const noMediaEl = document.getElementById('noMedia');
+            if (noMediaEl) noMediaEl.style.display = count ? 'none' : 'block';
+            if (!count) container.innerHTML = '';
+        }
+
+        /****************
+         * ADD MEDIA (link)
+         ****************/
+        async function adicionarMidia() {
+            if (!db) return alert('Firestore não configurado.');
+            const nomeInput = document.getElementById('nomeMidia');
+            const linkInput = document.getElementById('linkMidia');
+
+            const nome = (nomeInput ? nomeInput.value : '').trim();
+            let link = (linkInput ? linkInput.value : '').trim();
+            const ordemVal = (document.getElementById('ordemMidia') ? document.getElementById('ordemMidia').value : '').trim();
+            const ordem = ordemVal === '' ? NaN : parseInt(ordemVal);
+            const ativo = document.getElementById('ativoMidia') ? document.getElementById('ativoMidia').checked : true;
+
+            if (!link || isNaN(ordem)) return alert('Verifique: link e ordem são necessários.');
+
+            detectaTipoPorUrl();
+            let tipo = (document.getElementById('linkMidia') ? (document.getElementById('linkMidia').dataset.inferredType || '') : '').toUpperCase();
+
+            if (!tipo) {
+                const ext = extFromUrl(link) || '';
+                if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) tipo = 'IMAGEM';
+                if (['mp4', 'webm', 'ogg', 'mov', 'mkv'].includes(ext)) tipo = 'VIDEO';
+            }
+
+            if (!tipo) {
+                try {
+                    new URL(link);
+                    tipo = 'SITE';
+                } catch (e) {
+                    tipo = 'IMAGEM';
+                }
+            }
+
+            tipo = tipo.toUpperCase();
+
+            try {
+                const docData = {
+                    nome: nome || extractFilenameFromUrl(link) || 'Sem nome',
+                    url: link,
+                    tipo,
+                    ordem,
+                    ativo,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // depois de detectar tipo === 'SITE'
+                if (tipo === 'SITE') {
+                    docData.embed = true;
+                    const originalLink = String(docData.url || '');
+
+                    if (originalLink.includes('docs.google.com/presentation')) {
+                        docData.embedType = 'slides';
+
+                        // tenta extrair ID de vários formatos (sem sobrescrever docData.url)
+                        let slideId = null;
+                        // padrão /presentation/d/<ID> (edit/share)
+                        let m = originalLink.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+                        if (m && m[1]) slideId = m[1];
+
+                        // formato publicado /d/e/<ID>/pub ou /d/e/<ID>/...
+                        if (!slideId) {
+                            m = originalLink.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
+                            if (m && m[1]) slideId = m[1];
+                        }
+
+                        // Se já for um embed (contém /embed) — não altera nada
+                        if (/\/presentation\/d\/.+\/embed/i.test(originalLink) || /\/presentation\/d\/e\/.+\/embed/i.test(originalLink)) {
+                            // mantém originalLink em docData.url e apenas registra que é slides para o painel.
+                            // Opcionalmente podemos também salvar embedUrl igual ao originalLink (mas sem mudar url):
+                            docData.embedUrl = originalLink;
+                        }
+                        // se temos ID, podemos gerar um embedUrl extra — mas NÃO sobrescrever docData.url
+                        else if (slideId) {
+                            const delayMs = Math.max(1000, Number(docData.delayMs || docData.delay || 7000));
+                            const embedUrl = `https://docs.google.com/presentation/d/${slideId}/embed?start=true&loop=true&delayms=${delayMs}`;
+                            docData.embedUrl = embedUrl; // salva como campo auxiliar para o player usar se quiser
+                            // NÃO altere docData.url — preserve o link que o usuário inseriu
+                        }
+                        // fallback: se contém '/pub' podemos gerar embedUrl auxiliar (sem sobrescrever url)
+                        else if (originalLink.includes('/pub')) {
+                            try {
+                                const delayMs = Math.max(1000, Number(docData.delayMs || docData.delay || 7000));
+                                let embedUrl = originalLink.replace(/\/pub(\?.*)?/, `/embed$1`);
+                                // garante params
+                                if (!/start=true/.test(embedUrl)) embedUrl += (embedUrl.includes('?') ? '&' : '?') + 'start=true';
+                                if (!/loop=true/.test(embedUrl)) embedUrl += '&loop=true';
+                                if (!/delayms=/.test(embedUrl)) embedUrl += `&delayms=${delayMs}`;
+                                docData.embedUrl = embedUrl; // auxiliar apenas
+                            } catch (e) {
+                                console.warn('Não foi possível gerar embedUrl a partir de pub link', e);
+                            }
+                        } else {
+                            console.warn('Google Slides link detectado mas ID não encontrado:', originalLink);
+                        }
+                    }
+                }
+
+
+                const empresaId = localStorage.getItem('empresaId') || 'empresa1';
+                await db.collection('empresas').doc(empresaId).collection('midias').add(docData);
+
+                showStatus('Mídia salva com sucesso.');
+                toast('Mídia adicionada');
+                limparFormulario();
+                showModal(false);
+                listarMidias(empresaId);
+            } catch (err) {
+                console.error(err);
+                showStatus('Erro ao salvar: ' + (err.message || err), true, true);
+            }
+        }
+
+        /****************
+         * FRAMES / FRASES
+         ****************/
+        async function adicionarFrase() {
+            if (!db) return alert('Firestore não configurado.');
+
+            // pega empresaId (prioridade: localStorage -> query param -> default)
+            const urlParams = new URLSearchParams(window.location.search);
+            const empresaId = localStorage.getItem('empresaId') || urlParams.get('empresa') || urlParams.get('empresaId') || 'empresa1';
+
+            const input = document.getElementById('novaFrase');
+            const frase = (input ? input.value : '').trim();
+            if (!frase) return alert('Digite uma frase.');
+
+            try {
+                // salva na sub-coleção da empresa para ficar alinhado com o painel
+                await db.collection('empresas')
+                    .doc(empresaId)
+                    .collection('frases')
+                    .add({
+                        texto: frase,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                if (input) input.value = '';
+                await listarFrases(empresaId);
+                toast('Frase adicionada');
+            } catch (e) {
+                console.error('Erro ao adicionar frase:', e);
+                showStatus('Erro ao adicionar frase: ' + (e.message || e), true, true);
+            }
+        }
+
+        async function listarFrases(passedEmpresaId) {
+            if (!db) return;
+            // prioridade: argumento -> localStorage -> query param -> default
+            const urlParams = new URLSearchParams(window.location.search);
+            const empresaId = passedEmpresaId || localStorage.getItem('empresaId') || urlParams.get('empresa') || urlParams.get('empresaId') || 'empresa1';
+
+            const list = document.getElementById('fraseList');
+            if (!list) return;
+            list.innerHTML = '';
+
+            try {
+                const snap = await db
+                    .collection('empresas')
+                    .doc(empresaId)
+                    .collection('frases')
+                    .orderBy('createdAt', 'asc')
+                    .get();
+
+                if (snap.empty) {
+                    list.innerHTML = '<div class="muted">Nenhuma frase adicionada.</div>';
+                    return;
+                }
+
+                // monta lista com botão excluir para cada documento
+                snap.forEach(doc => {
+                    const data = doc.data() || {};
+                    const texto = (data.texto || data.frase || data.mensagem || '').toString();
+
+                    const el = document.createElement('div');
+                    el.style.display = 'flex';
+                    el.style.justifyContent = 'space-between';
+                    el.style.alignItems = 'center';
+                    el.style.padding = '8px';
+                    el.style.borderRadius = '8px';
+                    el.style.background = '#fff';
+                    el.style.border = '1px solid #f0f6fb';
+                    el.style.marginBottom = '6px';
+
+                    const span = document.createElement('div');
+                    span.textContent = texto;
+                    span.style.flex = '1';
+                    span.style.marginRight = '8px';
+
+                    const btn = document.createElement('button');
+                    btn.className = 'btn.ghost';
+                    btn.textContent = 'Excluir';
+                    btn.style.background = 'transparent';
+                    btn.onclick = async() => {
+                        if (!confirm('Excluir frase?')) return;
+                        try {
+                            await db.collection('empresas')
+                                .doc(empresaId)
+                                .collection('frases')
+                                .doc(doc.id)
+                                .delete();
+                            await listarFrases(empresaId);
+                            showStatus('Frase excluída.');
+                        } catch (err) {
+                            console.error('Erro ao excluir frase:', err);
+                            showStatus('Erro ao excluir frase: ' + (err.message || err), true, true);
+                        }
+                    };
+
+                    el.appendChild(span);
+                    el.appendChild(btn);
+                    list.appendChild(el);
+                });
+            } catch (e) {
+                console.error('Erro listarFrases:', e);
+                list.innerHTML = `<div class="muted">Erro ao carregar frases: ${escapeHtml(e.message || 'Verifique permissões/índices')}</div>`;
+            }
+        }
+        /****************
+         * UPLOAD CATBOX
+         ****************/
+        const fileInput = document.getElementById('fileInput');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+        const chooseFileBtnModal = document.getElementById('chooseFileBtnModal');
+        if (chooseFileBtn && fileInput) chooseFileBtn.addEventListener('click', () => fileInput.click());
+        if (chooseFileBtnModal && fileInput) chooseFileBtnModal.addEventListener('click', () => fileInput.click());
+
+        if (fileInput) {
+            fileInput.addEventListener('change', async() => {
+                const file = fileInput.files[0];
+                if (!file) return;
+                showStatus('Enviando para Catbox...', false, true);
+                try {
+                    const url = await uploadToCatbox(file);
+                    const linkEl = document.getElementById('linkMidia');
+                    const nomeEl = document.getElementById('nomeMidia');
+                    if (linkEl) linkEl.value = url;
+                    if (nomeEl) nomeEl.value = file.name;
+                    const mime = file.type || '';
+                    const tipo = mime.startsWith('image/') ? 'IMAGEM' : (mime.startsWith('video/') ? 'VIDEO' : '');
+                    if (linkEl) linkEl.dataset.inferredType = tipo;
+                    const salvarAuto = document.getElementById('salvarAuto') ? document.getElementById('salvarAuto').checked : false;
+                    if (salvarAuto) {
+                        let ordemVal = document.getElementById('ordemMidia') ? document.getElementById('ordemMidia').value : '';
+                        let ordem = ordemVal === '' ? 9999 : parseInt(ordemVal);
+                        const ativo = document.getElementById('ativoMidia') ? document.getElementById('ativoMidia').checked : true;
+                        // SALVA NA SUBCOLEÇÃO CORRETA (empresas/{empresaId}/midias) — evita duplicação
+                        const empresaId = localStorage.getItem('empresaId') || new URLSearchParams(window.location.search).get('empresa') || 'empresa1';
+                        await db.collection('empresas').doc(empresaId).collection('midias').add({
+                            nome: file.name,
+                            url,
+                            tipo: tipo || 'IMAGEM',
+                            ordem,
+                            ativo,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        limparFormulario();
+                        listarMidias(empresaId);
+                        toast('Upload e salvamento concluídos');
+                    } else {
+                        showStatus('Upload concluído. Revisar e salvar.', false, true);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showStatus('Erro upload: ' + (err.message || err), true, true);
+                } finally {
+                    fileInput.value = '';
+                }
+            });
+        }
+
+        async function uploadToCatbox(file) {
+            const endpoint = "https://corsproxy.io/?https://catbox.moe/user/api.php";
+            const form = new FormData();
+            form.append('reqtype', 'fileupload');
+            form.append('fileToUpload', file);
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                body: form
+            });
+            const text = await res.text();
+            if (text && text.startsWith('https://')) return text.trim();
+            throw new Error(text || 'Resposta inesperada do servidor');
+        }
+
+        /****************
+         * VIDEO THUMBNAIL
+         ****************/
+        function generateVideoThumbnail(url, w = 320, h = 180, timeoutMs = 3500) {
+            return new Promise((resolve, reject) => {
+                try {
+                    const v = document.createElement('video');
+                    v.crossOrigin = 'anonymous';
+                    v.muted = true;
+                    v.playsInline = true;
+                    v.src = url;
+                    v.preload = 'metadata';
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    let done = false;
+                    const cleanup = () => {
+                        try {
+                            v.pause();
+                            v.src = '';
+                            v.removeAttribute('src');
+                        } catch (e) {}
+                    }
+                    const fail = (err) => {
+                        if (done) return;
+                        done = true;
+                        cleanup();
+                        reject(err);
+                    }
+                    const succeed = () => {
+                        if (done) return;
+                        try {
+                            ctx.drawImage(v, 0, 0, w, h);
+                            const d = canvas.toDataURL('image/jpeg', 0.75);
+                            done = true;
+                            cleanup();
+                            resolve(d);
+                        } catch (e) {
+                            fail(e);
+                        }
+                    }
+                    v.addEventListener('loadeddata', () => {
+                        try {
+                            const seekTo = Math.min(0.8, Math.max(0.1, (v.duration || 1) * 0.1));
+                            const onSeek = () => {
+                                succeed();
+                                v.removeEventListener('seeked', onSeek);
+                            };
+                            v.addEventListener('seeked', onSeek);
+                            try {
+                                v.currentTime = seekTo;
+                            } catch (e) {
+                                setTimeout(() => succeed(), 700);
+                            }
+                        } catch (e) {
+                            fail(e);
+                        }
+                    });
+                    v.addEventListener('error', () => fail(new Error('Erro carregar vídeo')));
+                    setTimeout(() => {
+                        if (!done) fail(new Error('Timeout thumbnail'));
+                    }, timeoutMs);
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }
+
+        // INIT
+        window.addEventListener('load', () => {
+            // evita chamar listar* duas vezes: só inicia se o usuário já estiver autenticado
+            if (db && auth.currentUser) {
+                listarFrases();
+                listarMidias();
+            } else if (!auth.currentUser) {
+                console.log('Usuário não autenticado no load — aguardando auth.onAuthStateChanged para inicializar listagens.');
+            } else {
+                const panel = document.querySelector('.panel');
+                if (panel) {
+                    const msg = document.createElement('div');
+                    msg.style.color = 'var(--danger)';
+                    msg.style.padding = '8px';
+                    msg.style.borderRadius = '8px';
+                    msg.textContent = 'Firestore não configurado — cole o firebaseConfig no topo deste documento.';
+                    panel.prepend(msg);
+                }
+            }
+        });
+
+        // atalhos
+        const openFormBtn2 = document.getElementById('openForm');
+        if (openFormBtn2) openFormBtn2.addEventListener('click', () => showModal(true));
+    </script>
+
+</body>
+
+</html>

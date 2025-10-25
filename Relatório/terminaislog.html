@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Diagnóstico Completo dos Terminais • Smart Mídia</title>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <style>
+         :root {
+            --bg: #eef3f8;
+            --card: #ffffff;
+            --primary: #0b63a5;
+            --accent: #144a86;
+            --muted: #6b7280;
+            --ok: #22c55e;
+            --warn: #eab308;
+            --err: #ef4444;
+            --radius: 14px;
+            --shadow-sm: 0 4px 14px rgba(16, 24, 40, 0.06);
+            --shadow-md: 0 8px 26px rgba(16, 24, 40, 0.1);
+            --gradient: linear-gradient(135deg, #0b63a5, #1a82d8);
+        }
+        
+        body {
+            font-family: "Inter", "Segoe UI", sans-serif;
+            background: var(--bg);
+            margin: 0;
+            padding: 24px 16px;
+            color: #0f172a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            min-height: 100vh;
+        }
+        
+        header {
+            width: 100%;
+            max-width: 950px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        h1 {
+            color: var(--accent);
+            margin: 0;
+            font-size: 30px;
+            font-weight: 800;
+        }
+        
+        p.subtitle {
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 14px;
+        }
+        
+        button {
+            background: var(--gradient);
+            color: #fff;
+            border: none;
+            padding: 12px 22px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 15px;
+            box-shadow: 0 6px 18px rgba(11, 99, 165, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            user-select: none;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 950px;
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(2, 6, 23, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+        
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .card {
+            background: linear-gradient(180deg, #fff, #f8fbff);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(2, 6, 23, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 6px;
+            height: 100%;
+            background: var(--gradient);
+            opacity: 0.1;
+        }
+        
+        .title {
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--accent);
+        }
+        
+        .value {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        
+        .status {
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            display: inline-block;
+            font-size: 14px;
+            margin-top: 8px;
+        }
+        
+        .ok {
+            background: var(--ok);
+            color: white;
+        }
+        
+        .warn {
+            background: var(--warn);
+            color: black;
+        }
+        
+        .err {
+            background: var(--err);
+            color: white;
+        }
+        
+        .list {
+            margin-top: 12px;
+            background: #f9fafb;
+            padding: 12px;
+            border-radius: 10px;
+            max-height: 220px;
+            overflow-y: auto;
+            font-size: 14px;
+            border: 1px solid #e5e7eb;
+        }
+        
+        .list div {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 6px 0;
+        }
+        
+        .list div:last-child {
+            border-bottom: none;
+        }
+        
+        footer {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: auto;
+            text-align: center;
+            width: 100%;
+            max-width: 950px;
+            padding: 12px 0;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Diagnóstico Completo dos Terminais</h1>
+        <p class="subtitle">Monitoramento individual e coletivo dos painéis Smart Mídia</p>
+    </header>
+
+    <div class="container">
+        <!-- Painel geral -->
+        <section class="section" id="painelGeral">
+            <h2 style="color: var(--accent)">Painel Geral dos Terminais</h2>
+            <button id="btnRecarregarPainel">🔄 Recarregar Painel Geral</button>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="title">Terminais Online</div>
+                    <div id="qtdTerminaisOnline" class="value">—</div>
+                    <div id="statusBadgeGeral" class="status">—</div>
+                </div>
+                <div class="card">
+                    <div class="title">Terminais Offline</div>
+                    <div id="qtdTerminaisOffline" class="value">—</div>
+                </div>
+                <div class="card">
+                    <div class="title">Média de Mídias no Loop</div>
+                    <div id="mediaMidias" class="value">—</div>
+                </div>
+                <div class="card">
+                    <div class="title">Quedas de Conexão (total)</div>
+                    <div id="qtdQuedasTotal" class="value">—</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="title">Últimas Quedas de Conexão (todos terminais)</div>
+                <div id="listaQuedasTotal" class="list">Nenhum registro ainda.</div>
+            </div>
+        </section>
+
+        <!-- Diagnóstico individual -->
+        <section class="section" id="diagnosticoTela">
+            <h2 style="color: var(--accent)">Diagnóstico Individual da Tela</h2>
+            <input type="text" id="inputTelaId" placeholder="Digite o ID da tela" style="padding:8px; font-size:16px; border-radius:6px; border:1px solid #ccc; width: 250px;">
+            <button id="btnCarregarTela">🔎 Carregar Tela</button>
+            <button id="btnRecarregarTela" style="display:none;">🔄 Recarregar Tela Individual</button>
+            <div id="mainContentTela" style="margin-top:16px;">
+                <div id="loadingTela" style="color:var(--muted);">Nenhuma tela carregada.</div>
+            </div>
+        </section>
+    </div>
+
+    <footer>📡 Atualização em tempo real via Firebase • Smart Mídia On</footer>
+
+    <script>
+        /* ---------- 🔧 Firebase Init ---------- */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDE1V9V4w0YbqJBgkeI7F4fN3sW_YokVBQ",
+            authDomain: "midiaindoor-d2109.firebaseapp.com",
+            databaseURL: "https://midiaindoor-d2109-default-rtdb.firebaseio.com",
+            projectId: "midiaindoor-d2109",
+            storageBucket: "midiaindoor-d2109.firebasestorage.app",
+            messagingSenderId: "549200922225",
+            appId: "1:549200922225:web:731664468eb51fbdf2bdd0",
+        };
+        firebase.initializeApp(firebaseConfig);
+
+        const auth = firebase.auth();
+        const firestore = firebase.firestore();
+        const rtdb = firebase.database();
+
+        /* ---------- 🔐 Autenticação ---------- */
+        async function ensureAuthAndEmpresaId() {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error("Timeout auth")), 8000);
+                auth.onAuthStateChanged(async user => {
+                    if (!user) {
+                        const next = encodeURIComponent(window.location.pathname + window.location.search);
+                        window.location.href = `login.html?next=${next}`;
+                        clearTimeout(timeout);
+                        return;
+                    }
+                    try {
+                        let empresaId = localStorage.getItem("empresaId");
+                        if (!empresaId) {
+                            const doc = await firestore.collection("users").doc(user.uid).get();
+                            if (doc.exists && doc.data().empresaId) empresaId = doc.data().empresaId;
+                        }
+                        if (!empresaId) empresaId = "empresa1";
+                        window.empresaId = empresaId;
+                        clearTimeout(timeout);
+                        resolve({
+                            user,
+                            empresaId
+                        });
+                    } catch (err) {
+                        clearTimeout(timeout);
+                        reject(err);
+                    }
+                });
+            });
+        }
+
+        /* ---------- 📊 Painel Geral ---------- */
+        const qtdTerminaisOnlineEl = document.getElementById("qtdTerminaisOnline");
+        const qtdTerminaisOfflineEl = document.getElementById("qtdTerminaisOffline");
+        const mediaMidiasEl = document.getElementById("mediaMidias");
+        const qtdQuedasTotalEl = document.getElementById("qtdQuedasTotal");
+        const listaQuedasTotalEl = document.getElementById("listaQuedasTotal");
+        const statusBadgeGeral = document.getElementById("statusBadgeGeral");
+        const btnRecarregarPainel = document.getElementById("btnRecarregarPainel");
+
+        function atualizarPainelGeral(data) {
+            if (!data) {
+                qtdTerminaisOnlineEl.textContent = "0";
+                qtdTerminaisOfflineEl.textContent = "0";
+                mediaMidiasEl.textContent = "—";
+                qtdQuedasTotalEl.textContent = "0";
+                listaQuedasTotalEl.textContent = "Nenhum registro ainda.";
+                statusBadgeGeral.textContent = "Nenhum terminal";
+                statusBadgeGeral.className = "status warn";
+                return;
+            }
+
+            const terminais = Object.values(data);
+            const total = terminais.length;
+            const online = terminais.filter(t => t.status === "online");
+            const offline = total - online.length;
+
+            qtdTerminaisOnlineEl.textContent = online.length;
+            qtdTerminaisOfflineEl.textContent = offline;
+            const media = terminais.reduce((acc, t) => acc + (t.qtdMidias || 0), 0) / total || 0;
+            mediaMidiasEl.textContent = media.toFixed(1);
+
+            if (online.length === 0) {
+                statusBadgeGeral.textContent = "Todos offline";
+                statusBadgeGeral.className = "status err";
+            } else if (offline > online.length) {
+                statusBadgeGeral.textContent = "Instável";
+                statusBadgeGeral.className = "status warn";
+            } else {
+                statusBadgeGeral.textContent = "Operação normal";
+                statusBadgeGeral.className = "status ok";
+            }
+        }
+
+        function atualizarQuedasGlobais(data) {
+            if (!data) {
+                qtdQuedasTotalEl.textContent = "0";
+                listaQuedasTotalEl.textContent = "Nenhum registro ainda.";
+                return;
+            }
+            const quedas = Object.values(data);
+            qtdQuedasTotalEl.textContent = quedas.length;
+            const ultimas = quedas.sort((a, b) => new Date(b) - new Date(a)).slice(0, 10);
+            listaQuedasTotalEl.innerHTML = ultimas.map(q =>
+                `<div>🔻 ${new Date(q).toLocaleString()}</div>`
+            ).join("");
+        }
+
+        /* ---------- 🔁 Botão Recarregar Painel ---------- */
+        btnRecarregarPainel.onclick = () => {
+            rtdb.ref("comandosGlobais").set({
+                acao: "reload",
+                horario: new Date().toISOString()
+            });
+            alert("🔁 Comando de atualização enviado ao painel geral!");
+        };
+
+        /* ---------- 💻 Diagnóstico Individual ---------- */
+        const inputTelaId = document.getElementById("inputTelaId");
+        const btnCarregarTela = document.getElementById("btnCarregarTela");
+        const mainContentTela = document.getElementById("mainContentTela");
+        const btnRecarregarTela = document.getElementById("btnRecarregarTela");
+        let telaListener = null;
+
+        btnCarregarTela.onclick = () => {
+            const id = inputTelaId.value.trim();
+            if (!id) return alert("Digite um ID de tela válido.");
+            if (telaListener) telaListener.off();
+
+            mainContentTela.innerHTML = `<div id="loadingTela">Carregando tela ${id}...</div>`;
+            btnRecarregarTela.style.display = "none";
+
+            telaListener = rtdb.ref(`terminais/${id}`);
+            telaListener.on("value", snap => {
+                const t = snap.val();
+                if (!t) {
+                    mainContentTela.innerHTML = `<p style="color:var(--err);font-weight:600;">Tela não encontrada.</p>`;
+                    return;
+                }
+
+                btnRecarregarTela.style.display = "inline-block";
+                mainContentTela.innerHTML = `
+          <div class="grid" style="gap:24px;">
+            <div class="card"><div class="title">ID</div><div class="value">${id}</div></div>
+            <div class="card"><div class="title">Status</div><div class="value" style="color:${
+              t.status === "online" ? "var(--ok)" :
+              t.status === "offline" ? "var(--err)" : "var(--warn)"
+            }">${t.status || "Desconhecido"}</div></div>
+            <div class="card"><div class="title">Mídias no Loop</div><div class="value">${t.qtdMidias ?? "—"}</div></div>
+            <div class="card"><div class="title">Duração do Loop</div><div class="value">${t.duracao ?? "—"} s</div></div>
+            <div class="card"><div class="title">Última Atualização</div><div class="value">${t.ultimoUpdate ? new Date(t.ultimoUpdate).toLocaleString() : "—"}</div></div>
+            <div class="card"><div class="title">Quedas</div><div class="value">${t.quedas?.length ?? 0}</div></div>
+          </div>`;
+            });
+        };
+
+        btnRecarregarTela.onclick = () => {
+            const id = inputTelaId.value.trim();
+            if (!id) return;
+            rtdb.ref(`terminais/${id}/comandos`).push({
+                acao: "reload",
+                horario: new Date().toISOString()
+            });
+            alert(`🔁 Comando de atualização enviado à tela ${id}!`);
+        };
+
+        /* ---------- 🚀 Iniciar ---------- */
+        ensureAuthAndEmpresaId().then(() => {
+            rtdb.ref("terminais").on("value", s => atualizarPainelGeral(s.val()));
+            rtdb.ref("quedasConexaoGlobais").on("value", s => atualizarQuedasGlobais(s.val()));
+        }).catch(() => window.location.href = "login.html");
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Painel de Exibição</title>
+
+    <!-- Firebase (compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* layout base */
+        
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background: #000;
+            overflow: hidden;
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #wrapper {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+            flex-direction: row;
+            transition: all 0.5s ease-in-out;
+        }
+        
+        body.rotated #wrapper {
+            flex-direction: column;
+            transform: rotate(90deg) translateY(-100%);
+            transform-origin: top left;
+            width: 100vh;
+            height: 100vw;
+            position: absolute;
+        }
+        
+        #superior {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            flex: 1;
+            background: #000;
+        }
+        
+        .rodape {
+            background: #fff;
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            color: #333;
+            font-weight: 500;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            z-index: 999;
+        }
+        
+        body:not(.rotated) .rodape {
+            height: 60px;
+            width: 100vw;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            flex-direction: row;
+            justify-content: space-between;
+        }
+        
+        body.rotated .rodape {
+            width: 60px;
+            height: 100vh;
+            position: absolute;
+            top: 0;
+            left: 0;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        body.rotated .frase,
+        body.rotated .info {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+        }
+        
+        .frase,
+        .info {
+            white-space: nowrap;
+        }
+        
+        .info {
+            display: flex;
+            flex-direction: column;
+            font-size: 1rem;
+            gap: 4px;
+            text-align: right;
+            align-items: flex-end;
+        }
+        
+        .texto {
+            background: transparent;
+            color: #fff;
+            font-size: 2rem;
+            padding: 2rem;
+            white-space: pre-wrap;
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            text-align: left;
+            line-height: 1.5;
+            overflow: auto;
+        }
+        
+        .imagem,
+        .video {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .fade {
+            opacity: 0;
+            transition: opacity 1s;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .active {
+            opacity: 1;
+            z-index: 1;
+        }
+        /* ===== Responsividade automática para mídias em #superior ===== */
+        
+        #superior {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #superior>* {
+            position: absolute !important;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: block !important;
+        }
+        
+        #superior img,
+        #superior video,
+        #superior iframe,
+        #superior .imagem,
+        #superior .video,
+        #superior .texto,
+        #superior .fade {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            box-sizing: border-box !important;
+        }
+        
+        #superior img,
+        #superior video,
+        #superior .imagem,
+        #superior .video {
+            object-fit: cover !important;
+            object-position: center center !important;
+        }
+        
+        #superior iframe {
+            width: 100% !important;
+            height: 100% !important;
+            transform-origin: center center;
+            border: 0;
+        }
+        
+        #superior .texto {
+            padding: 2rem !important;
+            overflow: auto !important;
+            background: transparent !important;
+            color: #fff !important;
+        }
+        
+        #superior .fade {
+            transition: opacity 1s !important;
+            will-change: opacity;
+        }
+        
+        body.rotated #superior>* {
+            position: absolute !important;
+            inset: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrapper">
+        <div id="superior" class="quadrante"></div>
+    </div>
+
+    <div class="rodape">
+        <div class="frase" id="fraseRodape">Seja Bem Vindo!</div>
+        <div class="info">
+            <div id="infoRodape">📅 00/00/0000 - 🕒 00:00</div>
+            <div class="tempo" id="tempoRodape"><span id="cidadeClima">Carregando clima...</span></div>
+        </div>
+    </div>
+
+    <script>
+        /* ---------- Firebase init (compat) ---------- */
+        const firebaseConfig = {
+            apiKey: "AIzaSyDE1V9V4w0YbqJBgkeI7F4fN3sW_YokVBQ",
+            authDomain: "midiaindoor-d2109.firebaseapp.com",
+            databaseURL: "https://midiaindoor-d2109-default-rtdb.firebaseio.com",
+            projectId: "midiaindoor-d2109",
+            storageBucket: "midiaindoor-d2109.appspot.com",
+            messagingSenderId: "549200922225",
+            appId: "1:549200922225:web:731664468eb51fbdf2bdd0"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+        const firestore = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
+        const db = firestore; // alias compatível com código anterior
+
+
+
+        async function resolveEmpresaIdForPage(userUid) {
+            const q = getQueryParam('empresa');
+            if (q) return q;
+            const ls = localStorage.getItem('empresaId');
+            if (ls) return ls;
+
+            if (db && userUid) {
+                try {
+                    const doc = await db.collection('users').doc(userUid).get();
+                    if (doc.exists && doc.data().empresaId) return doc.data().empresaId;
+                } catch (e) {
+                    console.warn('firestore users read err', e);
+                }
+            }
+
+            if (userUid) {
+                try {
+                    const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
+                    const v = snap.val() || {};
+                    if (v.empresaId) return v.empresaId;
+                } catch (e) {
+                    console.warn('RTDB usuarios read err', e);
+                }
+            }
+
+            return 'empresa1';
+        }
+
+        function resolvePainelId() {
+            const q = getQueryParam('painel') || getQueryParam('id') || getQueryParam('panel');
+            return q || localStorage.getItem('painelId') || 'painel-default';
+        }
+
+
+        /* ---------- carregarDados: Firestore -> fallback para root 'midias' -> RTDB fallback ---------- */
+        // Firestore compat ou modular? Ajuste se necessário.
+        // Exemplo para Firestore (compat) já que você carrega o SDK compat no painel:
+        async function carregarDados(colecao, empresaId) {
+            if (!empresaId) {
+                console.error('empresaId ausente ao carregar dados da coleção', colecao);
+                return [];
+            }
+
+            try {
+                // path: empresas/{empresaId}/{colecao}
+                const ref = db.collection('empresas').doc(empresaId).collection(colecao);
+
+                // se quiser ordenar por um campo (ex: ordem ou createdAt), descomente:
+                // const snapshot = await ref.orderBy('ordem').get();
+
+                const snapshot = await ref.get();
+                const itens = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data() || {};
+                    data._id = doc.id; // id caso precise atualizar/deletar
+                    itens.push(data);
+                });
+
+                return itens;
+            } catch (err) {
+                console.error('Erro ao carregar dados do Firestore', err);
+                return [];
+            }
+
+
+            // fallback RTDB (mantido)
+            try {
+                const r = await firebase.database().ref(`empresas/${empresaId}/${colecao}`).orderByChild('ordem').once('value');
+                const v = r.val() || {};
+                const items = Object.keys(v).map(k => ({
+                    id: k,
+                    ...v[k]
+                }));
+                items.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+                if (items && items.length) return items;
+
+                // se RTDB vazio, tenta raiz RTDB (empresas/ midias raiz is unlikely but just in case)
+                const rRoot = await firebase.database().ref(`${colecao}`).orderByChild('ordem').once('value');
+                const vRoot = rRoot.val() || {};
+                const itemsRoot = Object.keys(vRoot).map(k => ({
+                    id: k,
+                    ...vRoot[k]
+                }));
+                itemsRoot.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+                return itemsRoot;
+            } catch (e) {
+                console.warn('RTDB read error for', colecao, e);
+                return [];
+            }
+        }
+
+        /* ---------- carrossel principal ---------- */
+        // ajuste: agora recebe (colecao, containerId, empresaId)
+        async function iniciarCarrossel(colecao, containerId, empresaId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            const itens = await carregarDados(colecao, empresaId);
+            console.log('Itens carregados para carrossel', colecao, itens);
+            if (!itens || !itens.length) {
+                container.innerHTML = '<div style="color:#fff;padding:20px">Nenhuma mídia para exibir.</div>';
+                return;
+            }
+
+            let idx = 0;
+            let timer = null;
+            const len = itens.length;
+
+            function limparTimer() {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+            }
+
+            function exibirMidia(item) {
+                const container = document.getElementById('midia-container');
+                container.innerHTML = '';
+
+                const elemento = criarElemento(item.src);
+                container.appendChild(elemento);
+
+                // Define tempo padrão
+                let duracao = 7000;
+
+                // Site comum → 12 segundos
+                if (/^https?:\/\//i.test(item.src)) {
+                    if (item.src.includes('docs.google.com/presentation')) {
+                        duracao = null; // deixa o próprio Slides controlar
+                    } else {
+                        duracao = 12000; // site comum
+                    }
+                }
+
+                // Se for vídeo → tempo do vídeo
+                if (elemento.tagName === 'VIDEO') {
+                    elemento.onended = trocarMidia;
+                } else if (duracao) {
+                    // Se for imagem ou site comum → troca após o tempo definido
+                    setTimeout(trocarMidia, duracao);
+                }
+            }
+
+            // monta embedUrl para Google Slides quando necessário
+            function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 5000) {
+                if (!u) return null;
+                try {
+                    console.debug('[gerarEmbed] input:', u);
+                    // já é um embed completo (/embed)
+                    if (/\/presentation\/d\/e\/[^/]+\/embed/i.test(u) || /\/presentation\/d\/[^/]+\/embed/i.test(u)) {
+                        console.debug('[gerarEmbed] já é embed:', u);
+                        return u;
+                    }
+
+                    // se for /pub - garantir params e converter para /embed preservando query
+                    if (u.includes('/pub')) {
+                        let url = new URL(u);
+                        // garantir params
+                        if (!url.searchParams.has('start')) url.searchParams.set('start', 'true');
+                        if (!url.searchParams.has('loop')) url.searchParams.set('loop', 'true');
+                        if (!url.searchParams.has('delayms')) url.searchParams.set('delayms', String(defaultDelayMs));
+
+                        // transformar path ending /pub -> /embed
+                        url.pathname = url.pathname.replace(/\/pub$/i, '/embed');
+                        const s = url.toString();
+                        console.debug('[gerarEmbed] /pub -> embed:', s);
+                        return s;
+                    }
+
+                    // priorizar /d/e/<id> (links "e" publicos)
+                    let m = u.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
+                    if (m && m[1]) {
+                        const s = `https://docs.google.com/presentation/d/e/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
+                        console.debug('[gerarEmbed] /d/e -> embed:', s);
+                        return s;
+                    }
+
+                    // formato com /d/<id>/ (edit/view/share)
+                    m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                    if (m && m[1]) {
+                        const s = `https://docs.google.com/presentation/d/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
+                        console.debug('[gerarEmbed] /d -> embed:', s);
+                        return s;
+                    }
+                } catch (e) {
+                    console.warn('gerarEmbedSlidesFromUrl erro', e);
+                }
+                return null;
+            }
+
+            function criarElemento(item) {
+                if (!item) return null;
+
+                // Texto (frase/frame) tem prioridade
+                if (item.texto) {
+                    const d = document.createElement('div');
+                    d.className = 'fade texto';
+                    d.innerHTML = String(item.texto).replace(/\n/g, '<br>');
+                    return d;
+                }
+
+                // src prioriza embedUrl (se gerado no upload) e depois url/imagem/video
+                let src = String(item.embedUrl || item.url || item.imagem || item.video || '').trim();
+                const tipo = String(item.tipo || '').toUpperCase();
+
+                console.debug('[criarElemento] item:', item);
+                console.debug('[criarElemento] src inicial:', src);
+
+                // Se for Google Slides em formato não-embed, tenta gerar embedUrl
+                if (src && /docs\.google\.com\/presentation/i.test(src)) {
+                    const embed = gerarEmbedSlidesFromUrl(src, Number(item.delayMs || item.delay || 7000));
+                    if (embed) {
+                        console.debug('[criarElemento] embed gerado:', embed);
+                        src = embed;
+                    } else {
+                        console.debug('[criarElemento] não conseguiu gerar embed a partir de:', src);
+                    }
+                }
+
+                // Caso especial para /d/e/<id>/embed -> wrapper que "esconde" a barra inferior
+                if (src && /\/presentation\/d\/e\/[^/]+\/embed/i.test(src)) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.width = '100%';
+                    wrapper.style.height = '100%';
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.position = 'relative';
+
+                    // substitui '/embed' por '/pub' para ocultar a barra inferior
+                    const pubSrc = src.replace('/embed', '/pub');
+
+                    const ifr = document.createElement('iframe');
+                    ifr.src = pubSrc + (pubSrc.includes('?') ? '' : '?') + 'start=true&loop=true&delayms=3000';
+                    ifr.frameBorder = '0';
+                    ifr.setAttribute('allowfullscreen', 'true');
+                    ifr.setAttribute('mozallowfullscreen', 'true');
+                    ifr.setAttribute('webkitallowfullscreen', 'true');
+
+                    // estilo visual idêntico ao que você já testou
+                    ifr.style.width = '100%';
+                    ifr.style.height = '110%';
+                    ifr.style.marginTop = '-40px';
+                    ifr.style.border = '0';
+                    ifr.style.display = 'block';
+
+                    wrapper.appendChild(ifr);
+                    container.appendChild(wrapper);
+                }
+
+
+                // embed padrão /d/<id>/embed
+                if (src && /docs\.google\.com\/presentation\/d\/.+\/embed/i.test(src)) {
+                    const container = document.createElement('div');
+                    container.style.position = 'relative';
+                    container.style.width = '100%';
+                    container.style.height = '100%';
+                    container.style.background = 'black';
+
+                    const loading = document.createElement('div');
+                    loading.style.top = '50%';
+                    loading.style.left = '50%';
+                    loading.style.transform = 'translate(-50%, -50%)';
+                    loading.style.color = 'white';
+                    loading.style.fontSize = '22px';
+                    loading.style.fontFamily = 'sans-serif';
+                    loading.style.opacity = '0.8';
+                    container.appendChild(loading);
+
+                    const ifr = document.createElement('iframe');
+                    ifr.src = src;
+                    ifr.style.width = '100%';
+                    ifr.style.height = '100%';
+                    ifr.style.border = '0';
+                    ifr.style.opacity = '0';
+                    ifr.allow = 'autoplay; encrypted-media; fullscreen';
+                    ifr.setAttribute('allowfullscreen', 'true');
+                    container.appendChild(ifr);
+
+                    // Aguarda 4 segundos antes de exibir o slide e remover o "Carregando..."
+                    setTimeout(() => {
+                        ifr.style.transition = 'opacity 1s ease';
+                        ifr.style.opacity = '1';
+                        loading.remove();
+                    }, 4000);
+
+                    return container;
+                }
+
+                // Videos, imagens, sites (mesma lógica anterior)
+                if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(src)) {
+                    const v = document.createElement('video');
+                    v.src = src;
+                    v.autoplay = true;
+                    v.muted = true;
+                    v.playsInline = true;
+                    v.style.width = '100%';
+                    v.style.height = '100%';
+                    v.style.objectFit = 'contain';
+                    return v;
+                }
+
+                if (tipo === 'IMAGEM' || /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(src)) {
+                    const img = document.createElement('img');
+                    img.src = src;
+                    img.alt = item.nome || '';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'contain';
+                    return img;
+                }
+
+                if (/^https?:\/\//i.test(src)) {
+                    const ifr = document.createElement('iframe');
+                    ifr.src = src;
+                    ifr.style.width = '100%';
+                    ifr.style.height = '100%';
+                    ifr.frameBorder = '0';
+                    return ifr;
+                }
+
+
+                // 4) Site genérico (iframe)
+                if (/^https?:\/\//i.test(src)) {
+                    const ifr = document.createElement('iframe');
+                    ifr.src = src;
+                    ifr.style.width = '100%';
+                    ifr.style.height = '100%';
+                    ifr.frameBorder = '0';
+                    ifr.allow = 'fullscreen';
+                    return ifr;
+                }
+
+                // fallback
+                return null;
+            }
+
+            function registrarExibicaoSafe(item, ordem) {
+                try {
+                    const painelId = window.painelId || resolvePainelId();
+                    firebase.database().ref(`exibicoes/${empresaId}/${painelId}`).push({
+                        timestamp: new Date().toISOString(),
+                        tipo: item.tipo || 'desconhecido',
+                        conteudo: (item.nome || item.url || '').slice(0, 120),
+                        ordem: ordem
+                    });
+                } catch (e) {
+                    console.warn('Não foi possível registrar exibição:', e && e.message ? e.message : e);
+                }
+            }
+
+            async function mostrarProximo() {
+                limparTimer();
+
+                let tentativas = 0;
+                while (tentativas < len) {
+                    const item = itens[idx];
+                    const el = criarElemento(item);
+
+                    if (el) {
+                        container.innerHTML = '';
+                        container.style.background = '#000';
+                        container.appendChild(el);
+                        registrarExibicaoSafe(item, idx);
+
+                        // Se for video, aguarda final / trata onerror
+                        if (el.tagName === 'VIDEO') {
+                            // garantir que é um elemento video do DOM
+                            el.onended = () => {
+                                idx = (idx + 1) % len;
+                                setTimeout(mostrarProximo, 0);
+                            };
+                            el.onerror = () => {
+                                console.warn('Video erro, pulando item', item);
+                                idx = (idx + 1) % len;
+                                setTimeout(mostrarProximo, 0);
+                            };
+                            // se não iniciar em X ms, pula
+                            timer = setTimeout(() => {
+                                try {
+                                    if (!el.readyState || el.readyState < 2) {
+                                        console.warn('Video timeout — pulando');
+                                        idx = (idx + 1) % len;
+                                        setTimeout(mostrarProximo, 0);
+                                    }
+                                } catch (e) {
+                                    idx = (idx + 1) % len;
+                                    setTimeout(mostrarProximo, 0);
+                                }
+                            }, 8000);
+                        } else {
+                            const delay = Math.max(1500, Number(item.delayMs || item.delay || 7000));
+                            timer = setTimeout(() => {
+                                idx = (idx + 1) % len;
+                                mostrarProximo();
+                            }, delay);
+                        }
+                        return;
+                    }
+
+                    // se elemento inválido, tenta próximo
+                    tentativas++;
+                    idx = (idx + 1) % len;
+                }
+
+                console.warn('Nenhum item válido encontrado.');
+                container.innerHTML = '<div style="color:#fff;padding:20px">Nenhuma mídia válida encontrada.</div>';
+            }
+
+            mostrarProximo();
+        }
+
+
+        /* ---------- frases do rodapé ---------- */
+        async function carregarFrases() {
+            const empresaId = window.empresaId || null;
+            if (!empresaId) {
+                console.warn('carregarFrases: empresaId não definido ainda.');
+                return;
+            }
+
+            const docs = await carregarDados("frases", empresaId);
+            console.log('carregarFrases -> docs:', docs);
+
+            if (!docs || !docs.length) {
+                console.warn('Nenhuma frase encontrada para empresaId=', empresaId);
+                document.getElementById("fraseRodape").textContent = 'Bem-vindo!';
+                return;
+            }
+
+            // aceita vários nomes de campo possíveis
+            const frases = docs.map(f => {
+                return f.texto || f.frase || f.mensagem || f.text || f.content || '';
+            }).filter(Boolean);
+
+            if (!frases.length) {
+                console.warn('Frases carregadas, mas nenhum campo reconhecido (texto/frase/mensagem). Veja docs no console.');
+                console.log(docs);
+                document.getElementById("fraseRodape").textContent = docs[0].texto || docs[0].frase || 'Mensagem disponível';
+                return;
+            }
+
+            let fraseIndex = 0;
+            document.getElementById("fraseRodape").textContent = frases[fraseIndex];
+            setInterval(() => {
+                fraseIndex = (fraseIndex + 1) % frases.length;
+                document.getElementById("fraseRodape").textContent = frases[fraseIndex];
+            }, 15000);
+        }
+
+        /* ---------- relógio e clima ---------- */
+        function atualizarRelogio() {
+            const agora = new Date();
+            const data = agora.toLocaleDateString();
+            const hora = agora.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById("infoRodape").innerHTML = `📅 ${data} - 🕒 ${hora}`;
+        }
+
+        const cidades = [{
+            nome: "São Paulo",
+            query: "Sao+Paulo"
+        }, {
+            nome: "Santos",
+            query: "Santos+SP"
+        }, {
+            nome: "Guarujá",
+            query: "Guaruja+SP"
+        }, {
+            nome: "Bertioga",
+            query: "Bertioga+SP"
+        }, {
+            nome: "São Sebastião",
+            query: "Sao+Sebastiao+SP"
+        }, {
+            nome: "Praia Grande",
+            query: "Praia+Grande+SP"
+        }, {
+            nome: "Mongaguá",
+            query: "Mongagua+SP"
+        }, {
+            nome: "Ilha Comprida",
+            query: "Ilha+Comprida+SP"
+        }];
+        let cidadeIndex = 0;
+
+        async function atualizarTemperatura() {
+            const cidade = cidades[cidadeIndex];
+            try {
+                const res = await fetch(`https://wttr.in/${cidade.query}?format=%t`);
+                const temp = await res.text();
+                if (temp.toLowerCase().includes("unknown location")) throw new Error("Indisponível");
+                document.getElementById("cidadeClima").innerText = `🌡️ ${cidade.nome}: ${temp.replace('+','')}`;
+            } catch {
+                document.getElementById("cidadeClima").innerText = `⛅ ${cidade.nome}: Dados não disponíveis`;
+            }
+            cidadeIndex = (cidadeIndex + 1) % cidades.length;
+        }
+
+
+        /* ---------- onAuthStateChanged: resolve empresaId e inicializa ---------- */
+        auth.onAuthStateChanged(async user => {
+            if (!user) return;
+
+            window.empresaId = await resolveEmpresaIdForPage(user.uid);
+            window.painelId = resolvePainelId();
+            console.log('Autenticado:', user.email, 'empresaId=', window.empresaId, 'painelId=', window.painelId);
+
+            iniciarCarrossel('midias', 'superior', window.empresaId);
+            carregarFrases(); // sem argumentos
+        });
+
+        function getQueryParam(name) {
+            try {
+                return new URLSearchParams(window.location.search).get(name);
+            } catch {
+                return null;
+            }
+        }
+
+        async function resolveEmpresaIdForPage(userUid) {
+            // 1️⃣ Verifica se já existe o parâmetro na URL
+            const q = getQueryParam('empresa') || getQueryParam('empresaId');
+            if (q) {
+                // se já tem, salva e retorna
+                localStorage.setItem('empresaId', q);
+                return q;
+            }
+
+            // 2️⃣ Se não, tenta recuperar do localStorage
+            const ls = localStorage.getItem('empresaId');
+            if (ls) {
+                // atualiza a URL para conter o parâmetro
+                atualizarParametroNaUrl('empresaId', ls);
+                return ls;
+            }
+
+            // 3️⃣ Caso precise buscar no Firestore
+            if (db && userUid) {
+                try {
+                    const doc = await db.collection('users').doc(userUid).get();
+                    if (doc.exists && doc.data().empresaId) {
+                        const empresaId = doc.data().empresaId;
+                        localStorage.setItem('empresaId', empresaId);
+                        atualizarParametroNaUrl('empresaId', empresaId);
+                        return empresaId;
+                    }
+                } catch (e) {
+                    console.warn('firestore users read err', e);
+                }
+            }
+
+            // 4️⃣ Caso precise buscar no Realtime Database
+            if (userUid) {
+                try {
+                    const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
+                    const v = snap.val() || {};
+                    if (v.empresaId) {
+                        localStorage.setItem('empresaId', v.empresaId);
+                        atualizarParametroNaUrl('empresaId', v.empresaId);
+                        return v.empresaId;
+                    }
+                } catch (e) {
+                    console.warn('RTDB usuarios read err', e);
+                }
+            }
+
+            // 5️⃣ Valor padrão (fallback)
+            const padrao = 'empresa1';
+            localStorage.setItem('empresaId', padrao);
+            atualizarParametroNaUrl('empresaId', padrao);
+            return padrao;
+        }
+
+        // 🔹 Função auxiliar para atualizar a URL sem recarregar
+        function atualizarParametroNaUrl(paramName, paramValue) {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set(paramName, paramValue);
+                window.history.replaceState(null, '', url.toString());
+                console.log(`🔗 URL atualizada: ${url}`);
+            } catch (e) {
+                console.warn('Erro ao atualizar a URL com empresaId:', e);
+            }
+        }
+
+
+        /* ---------- inicialização imediata/cron ---------- */
+        // Chamadas que existiam no seu código original (mantidas)
+        atualizarRelogio();
+        atualizarTemperatura();
+        setInterval(atualizarRelogio, 10000);
+        setInterval(atualizarTemperatura, 60000);
+
+        document.addEventListener('keydown', e => {
+            if (e.key.toLowerCase() === 'v') document.body.classList.toggle('rotated');
+        });
+
+        const refComando = firebase.database().ref('painel/comando');
+        refComando.on('value', snap => {
+            const comando = snap.val();
+            if (!comando) return;
+            if (comando.acao === 'reload') {
+                console.log('Comando remoto: reload');
+                window.location.reload();
+            }
+        });
+    </script>
+</body>
+
+</html>
