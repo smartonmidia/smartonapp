@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login - Mídia Indoor</title>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+            background: linear-gradient(135deg, #0d47a1, #1976d2);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333
+        }
+        
+        .login-box {
+            background: #fff;
+            padding: 2.2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .18);
+            width: 340px;
+            text-align: center
+        }
+        
+        .login-box h2 {
+            margin: 0 0 1rem;
+            color: #1976d2
+        }
+        
+        input {
+            width: 100%;
+            padding: .7rem;
+            margin: .6rem 0;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            outline: none;
+            font-size: 1rem
+        }
+        
+        input:focus {
+            border-color: #1976d2;
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.08)
+        }
+        
+        button {
+            width: 100%;
+            padding: .75rem;
+            border: 0;
+            border-radius: 8px;
+            background: #1976d2;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: .6rem
+        }
+        
+        .loading {
+            display: none;
+            color: #1976d2;
+            margin-top: .6rem
+        }
+        
+        .error {
+            color: #b91c1c;
+            margin-top: .6rem;
+            min-height: 1.2em
+        }
+        
+        .footer {
+            font-size: .8rem;
+            color: #666;
+            margin-top: 12px
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-box">
+        <h2>Login do Sistema</h2>
+        <input id="email" type="email" placeholder="E-mail" autocomplete="username" />
+        <input id="password" type="password" placeholder="Senha" autocomplete="current-password" />
+        <button id="btnLogin" onclick="login()">Entrar</button>
+        <div id="loading" class="loading">Validando acesso...</div>
+        <div id="errorMsg" class="error"></div>
+        <div class="footer">© 2025 Mídia Indoor</div>
+    </div>
+
+    <script>
+        // configuração real
+        const firebaseConfig = {
+            apiKey: "AIzaSyDE1V9V4w0YbqJBgkeI7F4fN3sW_YokVBQ",
+            authDomain: "midiaindoor-d2109.firebaseapp.com",
+            databaseURL: "https://midiaindoor-d2109-default-rtdb.firebaseio.com",
+            projectId: "midiaindoor-d2109",
+            storageBucket: "midiaindoor-d2109.firebasestorage.app",
+            messagingSenderId: "549200922225",
+            appId: "1:549200922225:web:731664468eb51fbdf2bdd0"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        function showLoading(on) {
+            document.getElementById('loading').style.display = on ? 'block' : 'none';
+            document.getElementById('btnLogin').disabled = on;
+        }
+
+        function showError(msg) {
+            document.getElementById('errorMsg').textContent = msg || '';
+        }
+
+        // LOGIN: autentica e localiza o doc do usuário dentro de qualquer empresas/*/usuarios/*
+        // login usando collectionGroup('usuarios') procurando por email
+        async function login() {
+            showError('');
+            showLoading(true);
+
+            const emailInput = (document.getElementById('email').value || '').trim();
+            const password = (document.getElementById('password').value || '').trim();
+            if (!emailInput || !password) {
+                showError('Preencha e-mail e senha.');
+                showLoading(false);
+                return;
+            }
+
+            try {
+                // autentica no Firebase Auth
+                const cred = await auth.signInWithEmailAndPassword(emailInput, password);
+                const user = cred.user;
+                if (!user) throw new Error('Erro na autenticação.');
+
+                // procura o documento dentro de empresas/*/usuarios pelo campo email
+                const q = await db.collectionGroup('usuarios').where('email', '==', user.email).limit(1).get();
+
+                if (q.empty) {
+                    // debug útil (remova em produção)
+                    console.warn('collectionGroup retornou vazio para email:', user.email);
+                    throw new Error('Usuário autenticado, mas cadastro não encontrado em empresas/*/usuarios.');
+                }
+
+                const doc = q.docs[0];
+                const data = doc.data() || {};
+                // extrai empresaId a partir do caminho do documento parent.parent (empresas/{empresaId})
+                const empresaRef = doc.ref.parent.parent;
+                const empresaId = empresaRef ? empresaRef.id : null;
+
+                // aceita boolean true ou string 'true'
+                const ativo = (data.ativo === true) || (String(data.ativo).toLowerCase() === 'true');
+                if (!ativo) {
+                    await auth.signOut();
+                    throw new Error('Conta desativada.');
+                }
+
+                const funcao = (data.funcao || '').toLowerCase() || '';
+
+                // atualiza ultimo login (não fatal)
+                try {
+                    await doc.ref.update({
+                        ultimoLogin: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                } catch (e) {
+                    console.warn('update ultimoLogin falhou', e);
+                }
+
+                // redireciona por função
+                if (funcao === 'admin') {
+                    window.location.href = '../config/admin.html';
+                } else if (funcao === 'sindico') {
+                    window.location.href = empresaId ? `../upload/uploadsindico.html?empresa=${encodeURIComponent(empresaId)}` : '../upload/uploadsindico.html';
+                } else {
+                    await auth.signOut();
+                    throw new Error('Função desconhecida.');
+                }
+            } catch (err) {
+                console.error('Login error', err);
+                let msg = (err && err.message) ? err.message : String(err);
+                // mensagens amigáveis
+                if (msg.toLowerCase().includes('wrong-password')) msg = 'Senha incorreta.';
+                if (msg.toLowerCase().includes('user-not-found')) msg = 'Usuário não encontrado.';
+                showError(msg);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // onAuthStateChanged para redirecionar quem já estiver logado
+        auth.onAuthStateChanged(async(user) => {
+            if (!user) return;
+            try {
+                const q = await db.collectionGroup('usuarios').where('email', '==', user.email).limit(1).get();
+                if (q.empty) return;
+                const doc = q.docs[0];
+                const data = doc.data() || {};
+                const empresaRef = doc.ref.parent.parent;
+                const empresaId = empresaRef ? empresaRef.id : null;
+                const funcao = (data.funcao || '').toLowerCase();
+                if (funcao === 'admin') window.location.href = '../config/admin.html';
+                else if (funcao === 'sindico') {
+                    if (empresaId) window.location.href = `../upload/uploadsindico.html?empresa=${encodeURIComponent(empresaId)}`;
+                    else window.location.href = '../upload/uploadsindico.html';
+                }
+            } catch (e) {
+                console.warn('onAuthStateChanged fallback error', e);
+            }
+        });
+    </script>
+</body>
+
+</html>
