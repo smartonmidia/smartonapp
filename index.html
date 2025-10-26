@@ -411,62 +411,66 @@
         const firestore = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
 
         async function ensureAuthAndEmpresaId() {
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Tempo esgotado ao verificar autenticação.')), 8000);
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => reject(new Error('Tempo esgotado ao verificar autenticação.')), 8000);
 
-                auth.onAuthStateChanged(async user => {
-                    if (!user) {
-                        const next = encodeURIComponent(window.location.pathname + window.location.search);
-                        window.location.href = `login.html?next=${next}`;
-                        clearTimeout(timeout);
-                        return;
-                    }
+    auth.onAuthStateChanged(async user => {
+      if (!user) {
+        const next = encodeURIComponent(window.location.pathname + window.location.search);
+        window.location.href = `login.html?next=${next}`;
+        clearTimeout(timeout);
+        return;
+      }
 
-                    let empresaId = localStorage.getItem('empresaId');
+      let empresaId;
 
-                    if (!empresaId && firestore) {
-                        try {
-                            const doc = await firestore.collection('users').doc(user.uid).get();
-                            if (doc.exists && doc.data().empresaId) empresaId = doc.data().empresaId;
-                        } catch (errFs) {
-                            console.warn('Erro ao ler Firestore:', errFs);
-                        }
-                    }
+      // 🔹 1. Tenta primeiro pegar da URL
+      const params = new URLSearchParams(window.location.search);
+      const empresaFromUrl = params.get('empresa');
+      if (empresaFromUrl) empresaId = empresaFromUrl;
 
-                    if (!empresaId) {
-                        try {
-                            const snap = await database.ref('usuarios/' + user.uid).once('value');
-                            const v = snap.val() || {};
-                            if (v.empresaId) empresaId = v.empresaId;
-                        } catch (errRt) {
-                            console.warn('Erro ao ler Realtime DB:', errRt);
-                        }
-                    }
+      // 🔹 2. Se não tiver, tenta do localStorage
+      if (!empresaId) empresaId = localStorage.getItem('empresaId');
 
-                    if (!empresaId) empresaId = 'empresa1';
-
-                    // 🔹 salva no localStorage
-                    localStorage.setItem('empresaId', empresaId);
-
-                    // mantém também em variáveis globais
-                    window.empresaId = empresaId;
-                    window.currentUserUid = user.uid;
-
-                    // atualiza o cabeçalho
-                    document.getElementById('userLabel').textContent = user.email || user.displayName || user.uid;
-                    document.getElementById('empresaLabel').textContent = 'empresa: ' + empresaId;
-
-                    document.getElementById('userLabel').textContent = user.email || user.displayName || user.uid;
-                    document.getElementById('empresaLabel').textContent = 'empresa: ' + empresaId;
-
-                    clearTimeout(timeout);
-                    resolve({
-                        user,
-                        empresaId
-                    });
-                });
-            });
+      // 🔹 3. Se ainda não tiver, tenta do Firestore
+      if (!empresaId && firestore) {
+        try {
+          const doc = await firestore.collection('users').doc(user.uid).get();
+          if (doc.exists && doc.data().empresaId) empresaId = doc.data().empresaId;
+        } catch (errFs) {
+          console.warn('Erro ao ler Firestore:', errFs);
         }
+      }
+
+      // 🔹 4. Se não tiver, tenta do Realtime DB
+      if (!empresaId) {
+        try {
+          const snap = await database.ref('usuarios/' + user.uid).once('value');
+          const v = snap.val() || {};
+          if (v.empresaId) empresaId = v.empresaId;
+        } catch (errRt) {
+          console.warn('Erro ao ler Realtime DB:', errRt);
+        }
+      }
+
+      // 🔹 5. Se ainda não tiver, usa empresa padrão
+      if (!empresaId) empresaId = 'empresa1';
+
+      // 🔹 6. Salva e define globais
+      localStorage.setItem('empresaId', empresaId);
+      window.empresaId = empresaId;
+      window.currentUserUid = user.uid;
+
+      // 🔹 7. Atualiza interface
+      document.getElementById('userLabel').textContent = user.email || user.displayName || user.uid;
+      document.getElementById('empresaLabel').textContent = 'empresa: ' + empresaId;
+
+      clearTimeout(timeout);
+      resolve({ user, empresaId });
+    });
+  });
+}
+
 
         ensureAuthAndEmpresaId().catch(() => window.location.href = 'login.html');
 
