@@ -382,7 +382,7 @@
             }
 
             // monta embedUrl para Google Slides quando necessário
-            function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 5000) {
+            function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 1000) {
                 if (!u) return null;
                 try {
                     console.debug('[gerarEmbed] input:', u);
@@ -448,7 +448,7 @@
 
                 // Se for Google Slides em formato não-embed, tenta gerar embedUrl
                 if (src && /docs\.google\.com\/presentation/i.test(src)) {
-                    const embed = gerarEmbedSlidesFromUrl(src, Number(item.delayMs || item.delay || 7000));
+                    const embed = gerarEmbedSlidesFromUrl(src, Number(item.delayMs || item.delay || 12000));
                     if (embed) {
                         console.debug('[criarElemento] embed gerado:', embed);
                         src = embed;
@@ -469,7 +469,7 @@
                     const pubSrc = src.replace('/embed', '/pub');
 
                     const ifr = document.createElement('iframe');
-                    ifr.src = pubSrc + (pubSrc.includes('?') ? '' : '?') + 'start=true&loop=true&delayms=3000';
+                    ifr.src = pubSrc + (pubSrc.includes('?') ? '' : '?') + 'start=true&loop=true&delayms=12000';
                     ifr.frameBorder = '0';
                     ifr.setAttribute('allowfullscreen', 'true');
                     ifr.setAttribute('mozallowfullscreen', 'true');
@@ -596,30 +596,60 @@
                     const el = criarElemento(item);
 
                     if (el) {
+                        // limpa e prepara container
                         container.innerHTML = '';
                         container.style.background = '#000';
-                        container.appendChild(el);
+
+                        // wrapper para controlar fade-in / fade-out
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'fade';
+                        wrapper.style.position = 'absolute';
+                        wrapper.style.inset = '0';
+                        // assegura que o elemento ocupe todo o wrapper
+                        el.style.width = '100%';
+                        el.style.height = '100%';
+                        el.style.display = 'block';
+                        wrapper.appendChild(el);
+                        container.appendChild(wrapper);
+
+                        // for debugging / logs
                         registrarExibicaoSafe(item, idx);
 
-                        // Se for video, aguarda final / trata onerror
+                        // inicia fade-in (find-in)
+                        // esperar um pequeno tick para aplicar a classe active para a transição
+                        setTimeout(() => wrapper.classList.add('active'), 40);
+
+                        // se for VIDEO -> manter até o final do vídeo (onended)
                         if (el.tagName === 'VIDEO') {
                             // garantir que é um elemento video do DOM
                             el.onended = () => {
-                                idx = (idx + 1) % len;
-                                setTimeout(mostrarProximo, 0);
+                                // fade-out antes de trocar
+                                wrapper.classList.remove('active');
+                                setTimeout(() => {
+                                    idx = (idx + 1) % len;
+                                    mostrarProximo();
+                                }, 1000); // esperar tempo do fade-out (1s)
                             };
                             el.onerror = () => {
                                 console.warn('Video erro, pulando item', item);
-                                idx = (idx + 1) % len;
-                                setTimeout(mostrarProximo, 0);
+                                // fade-out e avança
+                                wrapper.classList.remove('active');
+                                setTimeout(() => {
+                                    idx = (idx + 1) % len;
+                                    mostrarProximo();
+                                }, 1000);
                             };
-                            // se não iniciar em X ms, pula
+                            // se o vídeo não iniciar em X ms, pula
                             timer = setTimeout(() => {
                                 try {
                                     if (!el.readyState || el.readyState < 2) {
                                         console.warn('Video timeout — pulando');
-                                        idx = (idx + 1) % len;
-                                        setTimeout(mostrarProximo, 0);
+                                        // fade-out e avança
+                                        wrapper.classList.remove('active');
+                                        setTimeout(() => {
+                                            idx = (idx + 1) % len;
+                                            mostrarProximo();
+                                        }, 1000);
                                     }
                                 } catch (e) {
                                     idx = (idx + 1) % len;
@@ -627,12 +657,29 @@
                                 }
                             }, 8000);
                         } else {
-                            const delay = Math.max(1500, Number(item.delayMs || item.delay || 7000));
+                            // para IMAGENS e IFRAME (sites) -> 10s
+                            const tag = (el.tagName || '').toUpperCase();
+                            let delay;
+                            if (tag === 'IMG' || tag === 'IFRAME') {
+                                delay = 12000; // 10s conforme solicitado
+                            } else {
+                                // mantém a lógica anterior para textos e outros (respeitando item.delay/delayMs)
+                                delay = Math.max(1500, Number(item.delayMs || item.delay || 7000));
+                            }
+
+                            // setar timer para iniciar fade-out depois do delay
                             timer = setTimeout(() => {
-                                idx = (idx + 1) % len;
-                                mostrarProximo();
+                                // inicia fade-out (find-out)
+                                wrapper.classList.remove('active');
+
+                                // após o tempo do fade (1s), avança para próxima mídia
+                                setTimeout(() => {
+                                    idx = (idx + 1) % len;
+                                    mostrarProximo();
+                                }, 1000);
                             }, delay);
                         }
+
                         return;
                     }
 

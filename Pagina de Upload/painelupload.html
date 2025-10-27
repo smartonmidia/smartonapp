@@ -349,7 +349,7 @@
                 </div>
                 <div style="display:flex;gap:10px;align-items:center">
                     <label class="muted">Intervalo entre slides (ms):</label>
-                    <input id="delayMsInput" type="number" class="small" placeholder="5000" value="5000" />
+                    <input id="delayMsInput" type="number" class="small" placeholder="1200" value="1200" />
                 </div>
                 <div><button id="closeModal" class="btn.ghost">Fechar</button></div>
             </div>
@@ -361,7 +361,7 @@
 
                 <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
                     <label class="muted">Intervalo entre slides (ms):</label>
-                    <input id="delayMsInput" type="number" class="small" placeholder="5000" value="5000" min="1000" />
+                    <input id="delayMsInput" type="number" class="small" placeholder="1200" value="1200" min="1000" />
                 </div>
 
                 <input id="ordemMidia" type="number" class="small" placeholder="Ordem (ex: 1)" />
@@ -865,7 +865,7 @@
                         }
                         // se temos ID, podemos gerar um embedUrl extra — mas NÃO sobrescrever docData.url
                         else if (slideId) {
-                            const delayMs = Math.max(1000, Number(docData.delayMs || docData.delay || 7000));
+                            const delayMs = Math.max(1000, Number(docData.delayMs || docData.delay || 1200));
                             const embedUrl = `https://docs.google.com/presentation/d/${slideId}/embed?start=true&loop=true&delayms=${delayMs}`;
                             docData.embedUrl = embedUrl; // salva como campo auxiliar para o player usar se quiser
                             // NÃO altere docData.url — preserve o link que o usuário inseriu
