@@ -354,79 +354,83 @@
             }
 
             function exibirMidia(item) {
-                const container = document.getElementById('midia-container');
-                container.innerHTML = '';
+    const container = document.getElementById('midia-container');
+    container.innerHTML = '';
 
-                const elemento = criarElemento(item.src);
-                container.appendChild(elemento);
+    // <<< alterado: passar o objeto item (não item.src) para criarElemento
+    const elemento = criarElemento(item);
+    container.appendChild(elemento);
 
-                // Define tempo padrão
-                let duracao = 7000;
+    // Define tempo padrão
+    let duracao = 12000;
 
-                // Site comum → 12 segundos
-                if (/^https?:\/\//i.test(item.src)) {
-                    if (item.src.includes('docs.google.com/presentation')) {
-                        duracao = null; // deixa o próprio Slides controlar
-                    } else {
-                        duracao = 12000; // site comum
-                    }
-                }
+    // Site comum → 12 segundos
+    if (/^https?:\/\//i.test(item.src)) {
+        if (item.src.includes('docs.google.com/presentation')) {
+            duracao = null; // deixa o próprio Slides controlar
+        } else {
+            duracao = 20000; // site comum
+        }
+    }
 
-                // Se for vídeo → tempo do vídeo
-                if (elemento.tagName === 'VIDEO') {
-                    elemento.onended = trocarMidia;
-                } else if (duracao) {
-                    // Se for imagem ou site comum → troca após o tempo definido
-                    setTimeout(trocarMidia, duracao);
-                }
-            }
+    // Se for vídeo → tempo do vídeo
+    if (elemento.tagName === 'VIDEO') {
+        elemento.onended = trocarMidia;
+    } else if (duracao) {
+        // Se for imagem ou site comum → troca após o tempo definido
+        setTimeout(trocarMidia, duracao);
+    }
+}
+
 
             // monta embedUrl para Google Slides quando necessário
-            function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 1000) {
-                if (!u) return null;
-                try {
-                    console.debug('[gerarEmbed] input:', u);
-                    // já é um embed completo (/embed)
-                    if (/\/presentation\/d\/e\/[^/]+\/embed/i.test(u) || /\/presentation\/d\/[^/]+\/embed/i.test(u)) {
-                        console.debug('[gerarEmbed] já é embed:', u);
-                        return u;
-                    }
+            // monta embedUrl para Google Slides quando necessário
+function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 12000) {
+    if (!u) return null;
+    try {
+        console.debug('[gerarEmbed] input:', u);
+        // já é um embed completo (/embed)
+        if (/\/presentation\/d\/e\/[^/]+\/embed/i.test(u) || /\/presentation\/d\/[^/]+\/embed/i.test(u)) {
+            console.debug('[gerarEmbed] já é embed:', u);
+            return u;
+        }
 
-                    // se for /pub - garantir params e converter para /embed preservando query
-                    if (u.includes('/pub')) {
-                        let url = new URL(u);
-                        // garantir params
-                        if (!url.searchParams.has('start')) url.searchParams.set('start', 'true');
-                        if (!url.searchParams.has('loop')) url.searchParams.set('loop', 'true');
-                        if (!url.searchParams.has('delayms')) url.searchParams.set('delayms', String(defaultDelayMs));
+        // se for /pub - garantir params e converter para /embed preservando query
+        if (u.includes('/pub')) {
+            let url = new URL(u);
+            // garantir params
+            if (!url.searchParams.has('start')) url.searchParams.set('start', 'true');
+            if (!url.searchParams.has('loop')) url.searchParams.set('loop', 'true');
+            if (!url.searchParams.has('delayms')) url.searchParams.set('delayms', String(defaultDelayMs));
 
-                        // transformar path ending /pub -> /embed
-                        url.pathname = url.pathname.replace(/\/pub$/i, '/embed');
-                        const s = url.toString();
-                        console.debug('[gerarEmbed] /pub -> embed:', s);
-                        return s;
-                    }
+            // transformar path ending /pub -> /embed
+            url.pathname = url.pathname.replace(/\/pub$/i, '/embed');
+            const s = url.toString();
+            console.debug('[gerarEmbed] /pub -> embed:', s);
+            return s;
+        }
 
-                    // priorizar /d/e/<id> (links "e" publicos)
-                    let m = u.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
-                    if (m && m[1]) {
-                        const s = `https://docs.google.com/presentation/d/e/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
-                        console.debug('[gerarEmbed] /d/e -> embed:', s);
-                        return s;
-                    }
+        // priorizar /d/e/<id> (links "e" publicos)
+        let m = u.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
+        if (m && m[1]) {
+            const s = `https://docs.google.com/presentation/d/e/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
+            console.debug('[gerarEmbed] /d/e -> embed:', s);
+            return s;
+        }
 
-                    // formato com /d/<id>/ (edit/view/share)
-                    m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                    if (m && m[1]) {
-                        const s = `https://docs.google.com/presentation/d/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
-                        console.debug('[gerarEmbed] /d -> embed:', s);
-                        return s;
-                    }
-                } catch (e) {
-                    console.warn('gerarEmbedSlidesFromUrl erro', e);
-                }
-                return null;
-            }
+        // formato com /d/<id>/ (edit/view/share)
+        m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
+        if (m && m[1]) {
+            const s = `https://docs.google.com/presentation/d/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
+            console.debug('[gerarEmbed] /d -> embed:', s);
+            return s;
+        }
+    } catch (e) {
+        console.warn('gerarEmbedSlidesFromUrl erro', e);
+    }
+    return null;
+}
+
 
             function criarElemento(item) {
                 if (!item) return null;
@@ -520,23 +524,37 @@
                         ifr.style.transition = 'opacity 1s ease';
                         ifr.style.opacity = '1';
                         loading.remove();
-                    }, 4000);
+                    }, 1500);
 
                     return container;
                 }
 
-                // Videos, imagens, sites (mesma lógica anterior)
-                if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(src)) {
-                    const v = document.createElement('video');
-                    v.src = src;
-                    v.autoplay = true;
-                    v.muted = true;
-                    v.playsInline = true;
-                    v.style.width = '100%';
-                    v.style.height = '100%';
-                    v.style.objectFit = 'contain';
-                    return v;
-                }
+// ======= VÍDEOS, IMAGENS, SITES =======
+if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(src)) {
+    const v = document.createElement('video');
+    v.src = src;
+    v.autoplay = true;
+    v.muted = true;
+    v.playsInline = true;
+    v.controls = false;
+    
+    // 🔹 Ajusta o tamanho e mantém a proporção
+    v.style.position = 'absolute';
+    v.style.left = '50%';
+    v.style.transform = 'translateX(-50%)';
+    v.style.bottom = '60px'; // distância exata do rodapé (ajuste conforme o tamanho real do seu rodapé)
+    v.style.width = 'auto';
+    v.style.height = 'calc(100% - 50px)'; // ocupa toda a tela, menos o rodapé
+    v.style.maxWidth = 'calc(100% - 40px)';
+    v.style.maxHeight = 'calc(100% - 60px)';
+    v.style.objectFit = 'contain'; // mantém o vídeo completo, sem cortes
+    v.style.backgroundColor = 'black'; // evita transparência se tiver bordas
+
+    return v;
+}
+
+
+
 
                 if (tipo === 'IMAGEM' || /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(src)) {
                     const img = document.createElement('img');
@@ -664,7 +682,7 @@
                                 delay = 12000; // 10s conforme solicitado
                             } else {
                                 // mantém a lógica anterior para textos e outros (respeitando item.delay/delayMs)
-                                delay = Math.max(1500, Number(item.delayMs || item.delay || 7000));
+                                delay = Math.max(2000, Number(item.delayMs || item.delay || 7000));
                             }
 
                             // setar timer para iniciar fade-out depois do delay
