@@ -236,36 +236,7 @@
         const firestore = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
         const db = firestore; // alias compatível com código anterior
 
-
-
-        async function resolveEmpresaIdForPage(userUid) {
-            const q = getQueryParam('empresa');
-            if (q) return q;
-            const ls = localStorage.getItem('empresaId');
-            if (ls) return ls;
-
-            if (db && userUid) {
-                try {
-                    const doc = await db.collection('users').doc(userUid).get();
-                    if (doc.exists && doc.data().empresaId) return doc.data().empresaId;
-                } catch (e) {
-                    console.warn('firestore users read err', e);
-                }
-            }
-
-            if (userUid) {
-                try {
-                    const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
-                    const v = snap.val() || {};
-                    if (v.empresaId) return v.empresaId;
-                } catch (e) {
-                    console.warn('RTDB usuarios read err', e);
-                }
-            }
-
-            return 'empresa1';
-        }
-
+        
         function resolvePainelId() {
             const q = getQueryParam('painel') || getQueryParam('id') || getQueryParam('panel');
             return q || localStorage.getItem('painelId') || 'painel-default';
@@ -276,58 +247,51 @@
         // Firestore compat ou modular? Ajuste se necessário.
         // Exemplo para Firestore (compat) já que você carrega o SDK compat no painel:
         async function carregarDados(colecao, empresaId) {
-            if (!empresaId) {
-                console.error('empresaId ausente ao carregar dados da coleção', colecao);
-                return [];
-            }
+    if (!empresaId) {
+        console.error('empresaId ausente ao carregar dados da coleção', colecao);
+        return [];
+    }
 
-            try {
-                // path: empresas/{empresaId}/{colecao}
-                const ref = db.collection('empresas').doc(empresaId).collection(colecao);
-
-                // se quiser ordenar por um campo (ex: ordem ou createdAt), descomente:
-                // const snapshot = await ref.orderBy('ordem').get();
-
-                const snapshot = await ref.get();
-                const itens = [];
-                snapshot.forEach(doc => {
-                    const data = doc.data() || {};
-                    data._id = doc.id; // id caso precise atualizar/deletar
-                    itens.push(data);
-                });
-
-                return itens;
-            } catch (err) {
-                console.error('Erro ao carregar dados do Firestore', err);
-                return [];
-            }
-
-
-            // fallback RTDB (mantido)
-            try {
-                const r = await firebase.database().ref(`empresas/${empresaId}/${colecao}`).orderByChild('ordem').once('value');
-                const v = r.val() || {};
-                const items = Object.keys(v).map(k => ({
-                    id: k,
-                    ...v[k]
-                }));
-                items.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
-                if (items && items.length) return items;
-
-                // se RTDB vazio, tenta raiz RTDB (empresas/ midias raiz is unlikely but just in case)
-                const rRoot = await firebase.database().ref(`${colecao}`).orderByChild('ordem').once('value');
-                const vRoot = rRoot.val() || {};
-                const itemsRoot = Object.keys(vRoot).map(k => ({
-                    id: k,
-                    ...vRoot[k]
-                }));
-                itemsRoot.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
-                return itemsRoot;
-            } catch (e) {
-                console.warn('RTDB read error for', colecao, e);
-                return [];
-            }
+    // 1) tenta Firestore (se configurado)
+    if (db) {
+        try {
+            const ref = db.collection('empresas').doc(empresaId).collection(colecao);
+            const snapshot = await ref.get();
+            const itens = [];
+            snapshot.forEach(doc => {
+                const data = doc.data() || {};
+                data._id = doc.id;
+                itens.push(data);
+            });
+            // retorna SOMENTE se encontrou itens no Firestore
+            if (itens.length) return itens;
+            // se não encontrou, continua para o fallback RTDB
+        } catch (err) {
+            console.warn('Erro Firestore (continuando fallback RTDB):', err);
+            // continua para RTDB
         }
+    }
+
+    // 2) fallback Realtime Database
+    try {
+        const r = await firebase.database().ref(`empresas/${empresaId}/${colecao}`).orderByChild('ordem').once('value');
+        const v = r.val() || {};
+        const items = Object.keys(v).map(k => ({ id: k, ...v[k] }));
+        items.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+        if (items && items.length) return items;
+
+        // 3) último recurso: raiz do RTDB
+        const rRoot = await firebase.database().ref(`${colecao}`).orderByChild('ordem').once('value');
+        const vRoot = rRoot.val() || {};
+        const itemsRoot = Object.keys(vRoot).map(k => ({ id: k, ...vRoot[k] }));
+        itemsRoot.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+        return itemsRoot;
+    } catch (e) {
+        console.warn('RTDB read error for', colecao, e);
+        return [];
+    }
+}
+
 
         /* ---------- carrossel principal ---------- */
         // ajuste: agora recebe (colecao, containerId, empresaId)
@@ -592,18 +556,19 @@ if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?
             }
 
             function registrarExibicaoSafe(item, ordem) {
-                try {
-                    const painelId = window.painelId || resolvePainelId();
-                    firebase.database().ref(`exibicoes/${empresaId}/${painelId}`).push({
-                        timestamp: new Date().toISOString(),
-                        tipo: item.tipo || 'desconhecido',
-                        conteudo: (item.nome || item.url || '').slice(0, 120),
-                        ordem: ordem
-                    });
-                } catch (e) {
-                    console.warn('Não foi possível registrar exibição:', e && e.message ? e.message : e);
-                }
-            }
+    try {
+        const painelId = window.painelId || resolvePainelId();
+        const empId = window.empresaId || 'empresa1';
+        firebase.database().ref(`exibicoes/${empId}/${painelId}`).push({
+            timestamp: new Date().toISOString(),
+            tipo: item.tipo || 'desconhecido',
+            conteudo: (item.nome || item.url || item.imagem || '').slice(0, 120),
+            ordem: ordem
+        });
+    } catch (e) {
+        console.warn('Não foi possível registrar exibição:', e && e.message ? e.message : e);
+    }
+}
 
             async function mostrarProximo() {
                 limparTimer();
@@ -805,15 +770,21 @@ if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?
 
         /* ---------- onAuthStateChanged: resolve empresaId e inicializa ---------- */
         auth.onAuthStateChanged(async user => {
-            if (!user) return;
+    let userUid = user ? user.uid : null;
+    window.empresaId = await resolveEmpresaIdForPage(userUid);
+    window.painelId = resolvePainelId();
 
-            window.empresaId = await resolveEmpresaIdForPage(user.uid);
-            window.painelId = resolvePainelId();
-            console.log('Autenticado:', user.email, 'empresaId=', window.empresaId, 'painelId=', window.painelId);
+    console.log('Painel iniciado', {
+        user: user ? user.email : 'Anônimo',
+        empresaId: window.empresaId,
+        painelId: window.painelId
+    });
 
-            iniciarCarrossel('midias', 'superior', window.empresaId);
-            carregarFrases(); // sem argumentos
-        });
+    // mesmo anônimo, carrega conteúdos públicos
+    iniciarCarrossel('midias', 'superior', window.empresaId);
+    carregarFrases();
+});
+
 
         function getQueryParam(name) {
             try {
@@ -823,71 +794,73 @@ if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?
             }
         }
 
-        async function resolveEmpresaIdForPage(userUid) {
-            // 1️⃣ Verifica se já existe o parâmetro na URL
-            const q = getQueryParam('empresa') || getQueryParam('empresaId');
-            if (q) {
-                // se já tem, salva e retorna
-                localStorage.setItem('empresaId', q);
-                return q;
-            }
+        // ---------- resolveEmpresaIdForPage (versão completa recomendada) ----------
+async function resolveEmpresaIdForPage(userUid) {
+    // 1️⃣ Verifica se já existe o parâmetro na URL (aceita 'empresa' ou 'empresaId')
+    const q = getQueryParam('empresa') || getQueryParam('empresaId');
+    if (q) {
+        localStorage.setItem('empresaId', q);
+        // atualiza a URL com o nome padronizado
+        atualizarParametroNaUrl('empresaId', q);
+        return q;
+    }
 
-            // 2️⃣ Se não, tenta recuperar do localStorage
-            const ls = localStorage.getItem('empresaId');
-            if (ls) {
-                // atualiza a URL para conter o parâmetro
-                atualizarParametroNaUrl('empresaId', ls);
-                return ls;
-            }
+    // 2️⃣ Se não, tenta recuperar do localStorage
+    const ls = localStorage.getItem('empresaId');
+    if (ls) {
+        atualizarParametroNaUrl('empresaId', ls);
+        return ls;
+    }
 
-            // 3️⃣ Caso precise buscar no Firestore
-            if (db && userUid) {
-                try {
-                    const doc = await db.collection('users').doc(userUid).get();
-                    if (doc.exists && doc.data().empresaId) {
-                        const empresaId = doc.data().empresaId;
-                        localStorage.setItem('empresaId', empresaId);
-                        atualizarParametroNaUrl('empresaId', empresaId);
-                        return empresaId;
-                    }
-                } catch (e) {
-                    console.warn('firestore users read err', e);
-                }
+    // 3️⃣ Caso precise buscar no Firestore (usuários)
+    if (db && userUid) {
+        try {
+            const doc = await db.collection('users').doc(userUid).get();
+            if (doc.exists && doc.data().empresaId) {
+                const empresaId = doc.data().empresaId;
+                localStorage.setItem('empresaId', empresaId);
+                atualizarParametroNaUrl('empresaId', empresaId);
+                return empresaId;
             }
-
-            // 4️⃣ Caso precise buscar no Realtime Database
-            if (userUid) {
-                try {
-                    const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
-                    const v = snap.val() || {};
-                    if (v.empresaId) {
-                        localStorage.setItem('empresaId', v.empresaId);
-                        atualizarParametroNaUrl('empresaId', v.empresaId);
-                        return v.empresaId;
-                    }
-                } catch (e) {
-                    console.warn('RTDB usuarios read err', e);
-                }
-            }
-
-            // 5️⃣ Valor padrão (fallback)
-            const padrao = 'empresa1';
-            localStorage.setItem('empresaId', padrao);
-            atualizarParametroNaUrl('empresaId', padrao);
-            return padrao;
+        } catch (e) {
+            console.warn('firestore users read err', e);
+            // sem return — continua para tentar RTDB / fallback
         }
+    }
 
-        // 🔹 Função auxiliar para atualizar a URL sem recarregar
-        function atualizarParametroNaUrl(paramName, paramValue) {
-            try {
-                const url = new URL(window.location.href);
-                url.searchParams.set(paramName, paramValue);
-                window.history.replaceState(null, '', url.toString());
-                console.log(`🔗 URL atualizada: ${url}`);
-            } catch (e) {
-                console.warn('Erro ao atualizar a URL com empresaId:', e);
+    // 4️⃣ Caso precise buscar no Realtime Database
+    if (userUid) {
+        try {
+            const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
+            const v = snap.val() || {};
+            if (v.empresaId) {
+                localStorage.setItem('empresaId', v.empresaId);
+                atualizarParametroNaUrl('empresaId', v.empresaId);
+                return v.empresaId;
             }
+        } catch (e) {
+            console.warn('RTDB usuarios read err', e);
         }
+    }
+
+    // 5️⃣ Valor padrão (fallback)
+    const padrao = 'empresa1';
+    localStorage.setItem('empresaId', padrao);
+    atualizarParametroNaUrl('empresaId', padrao);
+    return padrao;
+}
+
+// auxiliar usado acima
+function atualizarParametroNaUrl(paramName, paramValue) {
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set(paramName, paramValue);
+        window.history.replaceState(null, '', url.toString());
+    } catch (e) {
+        console.warn('Erro ao atualizar a URL com empresaId:', e);
+    }
+}
+
 
 
         /* ---------- inicialização imediata/cron ---------- */
