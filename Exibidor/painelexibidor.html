@@ -24,6 +24,14 @@
             background: #000;
             overflow: hidden;
             font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            box-sizing: border-box;
+        }
+        /* garante que padding do superior seja considerado */
+        
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
         }
         
         #wrapper {
@@ -42,8 +50,10 @@
             height: 100vw;
             position: absolute;
         }
+        /* área de mídia */
         
         #superior {
+            /* centraliza a mídia e permite contain sem cortes */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -51,6 +61,22 @@
             position: relative;
             flex: 1;
             background: #000;
+            width: 100%;
+            height: 100%;
+            /* reserva espaço para o rodapé (portrait) - será override em .rotated */
+            padding-bottom: 60px;
+        }
+        /* wrapper para mídia, facilita centralização absoluta */
+        
+        #superior .media-wrap {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
         }
         
         .rodape {
@@ -62,28 +88,43 @@
             font-weight: 500;
             font-size: 1.1rem;
             box-sizing: border-box;
-            z-index: 999;
+            z-index: 9999;
+            /* garantido */
+            /* transição suave caso queira animar */
+            transition: all 0.25s ease;
         }
+        /* ======= PORTRAIT (padrão) ======= */
         
         body:not(.rotated) .rodape {
             height: 60px;
             width: 100vw;
-            position: absolute;
+            position: fixed;
+            /* <<< alterado para fixed */
             bottom: 0;
             left: 0;
             flex-direction: row;
             justify-content: space-between;
+            z-index: 9999;
         }
+        /* ======= LANDSCAPE ROTATED (barra lateral) ======= */
         
         body.rotated .rodape {
             width: 60px;
             height: 100vh;
-            position: absolute;
+            position: fixed;
+            /* <<< alterado para fixed */
             top: 0;
             left: 0;
             flex-direction: column;
             justify-content: space-between;
             align-items: center;
+            z-index: 9999;
+        }
+        /* reserva espaço para rodape no modo rotacionado */
+        
+        body.rotated #superior {
+            padding-left: 60px;
+            /* reserva o espaço da barra lateral */
         }
         
         body.rotated .frase,
@@ -140,11 +181,7 @@
             z-index: 1;
         }
         /* ===== Responsividade automática para mídias em #superior ===== */
-        
-        #superior {
-            position: relative;
-            overflow: hidden;
-        }
+        /* garante que os filhos preencham o container */
         
         #superior>* {
             position: absolute !important;
@@ -155,28 +192,25 @@
             padding: 0 !important;
             display: block !important;
         }
-        
-        #superior img,
-        #superior video,
-        #superior iframe,
-        #superior .imagem,
-        #superior .video,
-        #superior .texto,
-        #superior .fade {
-            width: 100% !important;
-            height: 100% !important;
-            max-width: none !important;
-            max-height: none !important;
-            box-sizing: border-box !important;
-        }
+        /* --- Troca para CONTAIN: mantém proporcionalidade, sem cortes --- */
+        /* elementos de mídia preenchendo o wrapper central, sem cortes */
         
         #superior img,
         #superior video,
         #superior .imagem,
         #superior .video {
-            object-fit: cover !important;
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain !important;
             object-position: center center !important;
+            display: block;
+            margin: 0 auto;
+            position: relative !important;
+            background: black;
         }
+        /* Iframes costumam preencher, mantemos constraints para não cortar */
         
         #superior iframe {
             width: 100% !important;
@@ -203,6 +237,74 @@
             width: 100% !important;
             height: 100% !important;
         }
+        /* pequenas melhorias visuais do overlay de carregamento */
+        
+        #carregandoOverlay {
+            position: fixed;
+            inset: 0;
+            background: #0c0c0c;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 99999;
+            color: #e0e6ed;
+            font-family: "Roboto Mono", "Consolas", monospace;
+            text-align: center;
+            transition: opacity 0.9s ease;
+            will-change: opacity;
+        }
+        
+        #logoCarregando {
+            width: 420px;
+            margin-bottom: 28px;
+            opacity: 0.98;
+            transition: opacity 0.8s ease;
+        }
+        
+        .brilho {
+            animation: brilho 2.2s ease-in-out infinite;
+        }
+        
+        @keyframes brilho {
+            0%,
+            100% {
+                opacity: 0.75;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+        
+        .pontos {
+            display: inline-block;
+            width: auto;
+            height: 2em;
+            text-align: left;
+            position: relative;
+            margin-right: 8px;
+            letter-spacing: -8px;
+        }
+        
+        .pontos .dot {
+            position: relative;
+            left: 0;
+            top: 0;
+            font-size: 1.4em;
+            line-height: 1;
+            opacity: 0;
+            transition: opacity 120ms linear;
+            color: #9fded6;
+        }
+        
+        .pontos .dot.on {
+            opacity: 1;
+        }
+        
+        .fadeOutShort {
+            opacity: 0 !important;
+            transition: opacity 360ms ease;
+        }
     </style>
 </head>
 
@@ -218,6 +320,22 @@
             <div class="tempo" id="tempoRodape"><span id="cidadeClima">Carregando clima...</span></div>
         </div>
     </div>
+    </div>
+
+    <style>
+        #carregandoTexto {
+            font-size: 2.4rem;
+            font-weight: 600;
+        }
+        
+        #frase {
+            font-size: 1.1rem;
+        }
+        
+        .pontos .dot {
+            font-size: 1.3rem;
+        }
+    </style>
 
     <script>
         /* ---------- Firebase init (compat) ---------- */
@@ -236,23 +354,18 @@
         const firestore = (typeof firebase.firestore === 'function') ? firebase.firestore() : null;
         const db = firestore; // alias compatível com código anterior
 
-
         function resolvePainelId() {
             const q = getQueryParam('painel') || getQueryParam('id') || getQueryParam('panel');
             return q || localStorage.getItem('painelId') || 'painel-default';
         }
 
-
-        /* ---------- carregarDados: Firestore -> fallback para root 'midias' -> RTDB fallback ---------- */
-        // Firestore compat ou modular? Ajuste se necessário.
-        // Exemplo para Firestore (compat) já que você carrega o SDK compat no painel:
+        /* ---------- carregarDados: Firestore -> fallback RTDB ---------- */
         async function carregarDados(colecao, empresaId) {
             if (!empresaId) {
                 console.error('empresaId ausente ao carregar dados da coleção', colecao);
                 return [];
             }
 
-            // 1) tenta Firestore (se configurado)
             if (db) {
                 try {
                     const ref = db.collection('empresas').doc(empresaId).collection(colecao);
@@ -263,16 +376,12 @@
                         data._id = doc.id;
                         itens.push(data);
                     });
-                    // retorna SOMENTE se encontrou itens no Firestore
                     if (itens.length) return itens;
-                    // se não encontrou, continua para o fallback RTDB
                 } catch (err) {
                     console.warn('Erro Firestore (continuando fallback RTDB):', err);
-                    // continua para RTDB
                 }
             }
 
-            // 2) fallback Realtime Database
             try {
                 const r = await firebase.database().ref(`empresas/${empresaId}/${colecao}`).orderByChild('ordem').once('value');
                 const v = r.val() || {};
@@ -283,7 +392,6 @@
                 items.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
                 if (items && items.length) return items;
 
-                // 3) último recurso: raiz do RTDB
                 const rRoot = await firebase.database().ref(`${colecao}`).orderByChild('ordem').once('value');
                 const vRoot = rRoot.val() || {};
                 const itemsRoot = Object.keys(vRoot).map(k => ({
@@ -298,9 +406,7 @@
             }
         }
 
-
         /* ---------- carrossel principal ---------- */
-        // ajuste: agora recebe (colecao, containerId, empresaId)
         async function iniciarCarrossel(colecao, containerId, empresaId) {
             const container = document.getElementById(containerId);
             if (!container) return;
@@ -323,77 +429,27 @@
                 }
             }
 
-            function exibirMidia(item) {
-                const container = document.getElementById('midia-container');
-                container.innerHTML = '';
-
-                // <<< alterado: passar o objeto item (não item.src) para criarElemento
-                const elemento = criarElemento(item);
-                container.appendChild(elemento);
-
-                // Define tempo padrão
-                let duracao = 12000;
-
-                // Site comum → 12 segundos
-                if (/^https?:\/\//i.test(item.src)) {
-                    if (item.src.includes('docs.google.com/presentation')) {
-                        duracao = null; // deixa o próprio Slides controlar
-                    } else {
-                        duracao = 20000; // site comum
-                    }
-                }
-
-                // Se for vídeo → tempo do vídeo
-                if (elemento.tagName === 'VIDEO') {
-                    elemento.onended = trocarMidia;
-                } else if (duracao) {
-                    // Se for imagem ou site comum → troca após o tempo definido
-                    setTimeout(trocarMidia, duracao);
-                }
-            }
-
-
-            // monta embedUrl para Google Slides quando necessário
-            // monta embedUrl para Google Slides quando necessário
             function gerarEmbedSlidesFromUrl(u, defaultDelayMs = 12000) {
                 if (!u) return null;
                 try {
-                    console.debug('[gerarEmbed] input:', u);
-                    // já é um embed completo (/embed)
                     if (/\/presentation\/d\/e\/[^/]+\/embed/i.test(u) || /\/presentation\/d\/[^/]+\/embed/i.test(u)) {
-                        console.debug('[gerarEmbed] já é embed:', u);
                         return u;
                     }
-
-                    // se for /pub - garantir params e converter para /embed preservando query
                     if (u.includes('/pub')) {
                         let url = new URL(u);
-                        // garantir params
                         if (!url.searchParams.has('start')) url.searchParams.set('start', 'true');
                         if (!url.searchParams.has('loop')) url.searchParams.set('loop', 'true');
                         if (!url.searchParams.has('delayms')) url.searchParams.set('delayms', String(defaultDelayMs));
-
-                        // transformar path ending /pub -> /embed
                         url.pathname = url.pathname.replace(/\/pub$/i, '/embed');
-                        const s = url.toString();
-                        console.debug('[gerarEmbed] /pub -> embed:', s);
-                        return s;
+                        return url.toString();
                     }
-
-                    // priorizar /d/e/<id> (links "e" publicos)
                     let m = u.match(/\/d\/e\/([a-zA-Z0-9_-]+)/);
                     if (m && m[1]) {
-                        const s = `https://docs.google.com/presentation/d/e/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
-                        console.debug('[gerarEmbed] /d/e -> embed:', s);
-                        return s;
+                        return `https://docs.google.com/presentation/d/e/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
                     }
-
-                    // formato com /d/<id>/ (edit/view/share)
                     m = u.match(/\/d\/([a-zA-Z0-9_-]+)/);
                     if (m && m[1]) {
-                        const s = `https://docs.google.com/presentation/d/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
-                        console.debug('[gerarEmbed] /d -> embed:', s);
-                        return s;
+                        return `https://docs.google.com/presentation/d/${m[1]}/embed?start=true&loop=true&delayms=${defaultDelayMs}`;
                     }
                 } catch (e) {
                     console.warn('gerarEmbedSlidesFromUrl erro', e);
@@ -401,6 +457,7 @@
                 return null;
             }
 
+            carregarOrientacao(window.empresaId);
 
             function criarElemento(item) {
                 if (!item) return null;
@@ -413,61 +470,53 @@
                     return d;
                 }
 
-                // src prioriza embedUrl (se gerado no upload) e depois url/imagem/video
                 let src = String(item.embedUrl || item.url || item.imagem || item.video || '').trim();
                 const tipo = String(item.tipo || '').toUpperCase();
-
-                console.debug('[criarElemento] item:', item);
-                console.debug('[criarElemento] src inicial:', src);
 
                 // Se for Google Slides em formato não-embed, tenta gerar embedUrl
                 if (src && /docs\.google\.com\/presentation/i.test(src)) {
                     const embed = gerarEmbedSlidesFromUrl(src, Number(item.delayMs || item.delay || 12000));
-                    if (embed) {
-                        console.debug('[criarElemento] embed gerado:', embed);
-                        src = embed;
-                    } else {
-                        console.debug('[criarElemento] não conseguiu gerar embed a partir de:', src);
-                    }
+                    if (embed) src = embed;
                 }
 
-                // Caso especial para /d/e/<id>/embed -> wrapper que "esconde" a barra inferior
+                // função helper para criar um wrapper .media-wrap contendo o elemento
+                function wrapMedia(el) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'media-wrap fade';
+                    wrap.style.position = 'absolute';
+                    wrap.style.inset = '0';
+                    // garante que o elemento ocupe todo o wrapper e respeite object-fit
+                    el.style.width = '100%';
+                    el.style.height = '100%';
+                    el.style.maxWidth = '100%';
+                    el.style.maxHeight = '100%';
+                    el.style.display = 'block';
+                    wrap.appendChild(el);
+                    return wrap;
+                }
+
+                // Caso especial para /d/e/<id>/embed -> usa /pub para ocultar barra inferior
                 if (src && /\/presentation\/d\/e\/[^/]+\/embed/i.test(src)) {
-                    const wrapper = document.createElement('div');
-                    wrapper.style.width = '100%';
-                    wrapper.style.height = '100%';
-                    wrapper.style.overflow = 'hidden';
-                    wrapper.style.position = 'relative';
-
-                    // substitui '/embed' por '/pub' para ocultar a barra inferior
                     const pubSrc = src.replace('/embed', '/pub');
-
                     const ifr = document.createElement('iframe');
                     ifr.src = pubSrc + (pubSrc.includes('?') ? '' : '?') + 'start=true&loop=true&delayms=12000';
                     ifr.frameBorder = '0';
                     ifr.setAttribute('allowfullscreen', 'true');
                     ifr.setAttribute('mozallowfullscreen', 'true');
                     ifr.setAttribute('webkitallowfullscreen', 'true');
-
-                    // estilo visual idêntico ao que você já testou
                     ifr.style.width = '100%';
                     ifr.style.height = '110%';
                     ifr.style.marginTop = '-40px';
                     ifr.style.border = '0';
-                    ifr.style.display = 'block';
-
-                    wrapper.appendChild(ifr);
-                    container.appendChild(wrapper);
+                    return wrapMedia(ifr);
                 }
 
-
-                // embed padrão /d/<id>/embed
                 if (src && /docs\.google\.com\/presentation\/d\/.+\/embed/i.test(src)) {
-                    const container = document.createElement('div');
-                    container.style.position = 'relative';
-                    container.style.width = '100%';
-                    container.style.height = '100%';
-                    container.style.background = 'black';
+                    const containerIframe = document.createElement('div');
+                    containerIframe.style.position = 'relative';
+                    containerIframe.style.width = '100%';
+                    containerIframe.style.height = '100%';
+                    containerIframe.style.background = 'black';
 
                     const loading = document.createElement('div');
                     loading.style.top = '50%';
@@ -477,7 +526,7 @@
                     loading.style.fontSize = '22px';
                     loading.style.fontFamily = 'sans-serif';
                     loading.style.opacity = '0.8';
-                    container.appendChild(loading);
+                    containerIframe.appendChild(loading);
 
                     const ifr = document.createElement('iframe');
                     ifr.src = src;
@@ -487,19 +536,24 @@
                     ifr.style.opacity = '0';
                     ifr.allow = 'autoplay; encrypted-media; fullscreen';
                     ifr.setAttribute('allowfullscreen', 'true');
-                    container.appendChild(ifr);
+                    containerIframe.appendChild(ifr);
 
-                    // Aguarda 4 segundos antes de exibir o slide e remover o "Carregando..."
                     setTimeout(() => {
                         ifr.style.transition = 'opacity 1s ease';
                         ifr.style.opacity = '1';
                         loading.remove();
                     }, 1500);
 
-                    return container;
+                    // encapsula para manter comportamento consistente
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'media-wrap fade';
+                    wrapper.style.position = 'absolute';
+                    wrapper.style.inset = '0';
+                    wrapper.appendChild(containerIframe);
+                    return wrapper;
                 }
 
-                // ======= VÍDEOS, IMAGENS, SITES =======
+                // VÍDEOS
                 if (tipo === 'VIDEO' || /\.mp4($|\?)/i.test(src) || /\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(src)) {
                     const v = document.createElement('video');
                     v.src = src;
@@ -507,46 +561,44 @@
                     v.muted = true;
                     v.playsInline = true;
                     v.controls = false;
+                    v.preload = 'auto';
 
-                    // 🔹 Ajusta o tamanho e mantém a proporção
-                    v.style.position = 'absolute';
-                    v.style.left = '50%';
-                    v.style.transform = 'translateX(-50%)';
-                    v.style.bottom = '60px'; // distância exata do rodapé (ajuste conforme o tamanho real do seu rodapé)
-                    v.style.width = 'auto';
-                    v.style.height = 'calc(100% - 50px)'; // ocupa toda a tela, menos o rodapé
-                    v.style.maxWidth = 'calc(100% - 40px)';
-                    v.style.maxHeight = 'calc(100% - 60px)';
-                    v.style.objectFit = 'contain'; // mantém o vídeo completo, sem cortes
-                    v.style.backgroundColor = 'black'; // evita transparência se tiver bordas
+                    // estilos: ocupar o máximo do wrapper sem cortar (contain)
+                    v.style.objectFit = 'contain';
+                    v.style.objectPosition = 'center center';
+                    v.style.backgroundColor = 'black';
+                    v.style.width = '100%';
+                    v.style.height = '100%';
+                    v.style.maxWidth = '100%';
+                    v.style.maxHeight = '100%';
+                    v.style.display = 'block';
+                    v.style.position = 'relative';
 
-                    return v;
+                    const wrapped = wrapMedia(v);
+
+                    // controlar término, erro, timeout
+                    v.onended = () => {
+                        // deixa o carrossel cuidar da troca — o caller controla timers
+                    };
+                    v.onerror = () => console.warn('Video erro (elemento):', src);
+
+                    return wrapped;
                 }
 
-
-
-
+                // IMAGENS
                 if (tipo === 'IMAGEM' || /\.(jpe?g|png|gif|webp|bmp|svg)(\?.*)?$/i.test(src)) {
                     const img = document.createElement('img');
                     img.src = src;
                     img.alt = item.nome || '';
+                    img.style.objectFit = 'contain';
+                    img.style.objectPosition = 'center center';
+                    img.style.display = 'block';
                     img.style.width = '100%';
                     img.style.height = '100%';
-                    img.style.objectFit = 'contain';
-                    return img;
+                    return wrapMedia(img);
                 }
 
-                if (/^https?:\/\//i.test(src)) {
-                    const ifr = document.createElement('iframe');
-                    ifr.src = src;
-                    ifr.style.width = '100%';
-                    ifr.style.height = '100%';
-                    ifr.frameBorder = '0';
-                    return ifr;
-                }
-
-
-                // 4) Site genérico (iframe)
+                // SITES / IFRAME genérico
                 if (/^https?:\/\//i.test(src)) {
                     const ifr = document.createElement('iframe');
                     ifr.src = src;
@@ -554,10 +606,10 @@
                     ifr.style.height = '100%';
                     ifr.frameBorder = '0';
                     ifr.allow = 'fullscreen';
-                    return ifr;
+                    return wrapMedia(ifr);
                 }
 
-                // fallback
+                // fallback nulo
                 return null;
             }
 
@@ -589,52 +641,48 @@
                         container.innerHTML = '';
                         container.style.background = '#000';
 
-                        // wrapper para controlar fade-in / fade-out
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'fade';
-                        wrapper.style.position = 'absolute';
-                        wrapper.style.inset = '0';
-                        // assegura que o elemento ocupe todo o wrapper
+                        // assegura que o elemento ocupe todo o container
+                        el.style.position = 'absolute';
+                        el.style.inset = '0';
                         el.style.width = '100%';
                         el.style.height = '100%';
-                        el.style.display = 'block';
-                        wrapper.appendChild(el);
-                        container.appendChild(wrapper);
 
-                        // for debugging / logs
+                        container.appendChild(el);
+
+                        // logs
                         registrarExibicaoSafe(item, idx);
 
-                        // inicia fade-in (find-in)
-                        // esperar um pequeno tick para aplicar a classe active para a transição
-                        setTimeout(() => wrapper.classList.add('active'), 40);
+                        // iniciar fade-in
+                        setTimeout(() => el.classList.add('active'), 40);
 
-                        // se for VIDEO -> manter até o final do vídeo (onended)
-                        if (el.tagName === 'VIDEO') {
-                            // garantir que é um elemento video do DOM
-                            el.onended = () => {
-                                // fade-out antes de trocar
-                                wrapper.classList.remove('active');
-                                setTimeout(() => {
-                                    idx = (idx + 1) % len;
-                                    mostrarProximo();
-                                }, 1000); // esperar tempo do fade-out (1s)
-                            };
-                            el.onerror = () => {
-                                console.warn('Video erro, pulando item', item);
-                                // fade-out e avança
-                                wrapper.classList.remove('active');
+                        // se for video dentro do wrapper, pega o vídeo real
+                        const videoEl = el.querySelector && el.querySelector('video');
+
+                        if (videoEl) {
+                            // espera terminar ou faz timeout caso não carregue
+                            videoEl.onended = () => {
+                                el.classList.remove('active');
                                 setTimeout(() => {
                                     idx = (idx + 1) % len;
                                     mostrarProximo();
                                 }, 1000);
                             };
+
+                            videoEl.onerror = () => {
+                                console.warn('Video erro, pulando item', item);
+                                el.classList.remove('active');
+                                setTimeout(() => {
+                                    idx = (idx + 1) % len;
+                                    mostrarProximo();
+                                }, 1000);
+                            };
+
                             // se o vídeo não iniciar em X ms, pula
                             timer = setTimeout(() => {
                                 try {
-                                    if (!el.readyState || el.readyState < 2) {
+                                    if (!videoEl.readyState || videoEl.readyState < 2) {
                                         console.warn('Video timeout — pulando');
-                                        // fade-out e avança
-                                        wrapper.classList.remove('active');
+                                        el.classList.remove('active');
                                         setTimeout(() => {
                                             idx = (idx + 1) % len;
                                             mostrarProximo();
@@ -646,22 +694,16 @@
                                 }
                             }, 8000);
                         } else {
-                            // para IMAGENS e IFRAME (sites) -> 10s
-                            const tag = (el.tagName || '').toUpperCase();
+                            const tag = (el.tagName || el.firstElementChild && el.firstElementChild.tagName || '').toUpperCase();
                             let delay;
-                            if (tag === 'IMG' || tag === 'IFRAME') {
-                                delay = 12000; // 10s conforme solicitado
+                            if (tag === 'IMG' || tag === 'IFRAME' || tag === 'DIV') {
+                                delay = 12000;
                             } else {
-                                // mantém a lógica anterior para textos e outros (respeitando item.delay/delayMs)
                                 delay = Math.max(2000, Number(item.delayMs || item.delay || 7000));
                             }
 
-                            // setar timer para iniciar fade-out depois do delay
                             timer = setTimeout(() => {
-                                // inicia fade-out (find-out)
-                                wrapper.classList.remove('active');
-
-                                // após o tempo do fade (1s), avança para próxima mídia
+                                el.classList.remove('active');
                                 setTimeout(() => {
                                     idx = (idx + 1) % len;
                                     mostrarProximo();
@@ -684,7 +726,6 @@
             mostrarProximo();
         }
 
-
         /* ---------- frases do rodapé ---------- */
         async function carregarFrases() {
             const empresaId = window.empresaId || null;
@@ -702,10 +743,7 @@
                 return;
             }
 
-            // aceita vários nomes de campo possíveis
-            const frases = docs.map(f => {
-                return f.texto || f.frase || f.mensagem || f.text || f.content || '';
-            }).filter(Boolean);
+            const frases = docs.map(f => f.texto || f.frase || f.mensagem || f.text || f.content || '').filter(Boolean);
 
             if (!frases.length) {
                 console.warn('Frases carregadas, mas nenhum campo reconhecido (texto/frase/mensagem). Veja docs no console.');
@@ -766,31 +804,60 @@
                 const res = await fetch(`https://wttr.in/${cidade.query}?format=%t`);
                 const temp = await res.text();
                 if (temp.toLowerCase().includes("unknown location")) throw new Error("Indisponível");
-                document.getElementById("cidadeClima").innerText = `🌡️ ${cidade.nome}: ${temp.replace('+','')}`;
+                document.getElementById("cidadeClima").innerText = `🌡️ ${cidade.nome}: ${temp.replace('+', '')}`;
             } catch {
                 document.getElementById("cidadeClima").innerText = `⛅ ${cidade.nome}: Dados não disponíveis`;
             }
             cidadeIndex = (cidadeIndex + 1) % cidades.length;
         }
 
+        /* -------------------------
+           Função utilitária: atualiza a URL no navegador sem reload
+           Deve estar definida antes de resolveEmpresaIdForPage
+           ------------------------- */
+        function atualizarParametroNaUrl(paramName, paramValue) {
+            try {
+                if (paramValue === null || paramValue === undefined) return;
+                const url = new URL(window.location.href);
+                url.searchParams.set(paramName, String(paramValue));
+                window.history.replaceState(null, '', url.toString());
+            } catch (e) {
+                console.warn('atualizarParametroNaUrl erro:', e);
+            }
+        }
 
         /* ---------- onAuthStateChanged: resolve empresaId e inicializa ---------- */
         auth.onAuthStateChanged(async user => {
-            let userUid = user ? user.uid : null;
-            window.empresaId = await resolveEmpresaIdForPage(userUid);
-            window.painelId = resolvePainelId();
+            try {
+                const userUid = user ? user.uid : null;
 
-            console.log('Painel iniciado', {
-                user: user ? user.email : 'Anônimo',
-                empresaId: window.empresaId,
-                painelId: window.painelId
-            });
+                window.empresaId = await resolveEmpresaIdForPage(userUid);
+                window.painelId = resolvePainelId();
 
-            // mesmo anônimo, carrega conteúdos públicos
-            iniciarCarrossel('midias', 'superior', window.empresaId);
-            carregarFrases();
+                console.log('Painel iniciado', {
+                    user: user ? user.email : 'Anônimo',
+                    empresaId: window.empresaId,
+                    painelId: window.painelId
+                });
+
+                try {
+                    await carregarOrientacao(window.empresaId);
+                } catch (err) {
+                    console.warn('Erro ao carregar orientação (continuando):', err);
+                }
+
+                iniciarCarrossel('midias', 'superior', window.empresaId);
+                carregarFrases();
+            } catch (e) {
+                console.error('Erro na inicialização do painel dentro de onAuthStateChanged:', e);
+                try {
+                    iniciarCarrossel('midias', 'superior', window.empresaId || null);
+                    carregarFrases();
+                } catch (err) {
+                    console.error('Falha ao iniciar carrossel/frases após erro:', err);
+                }
+            }
         });
-
 
         function getQueryParam(name) {
             try {
@@ -802,23 +869,19 @@
 
         // ---------- resolveEmpresaIdForPage (versão completa recomendada) ----------
         async function resolveEmpresaIdForPage(userUid) {
-            // 1️⃣ Verifica se já existe o parâmetro na URL (aceita 'empresa' ou 'empresaId')
             const q = getQueryParam('empresa') || getQueryParam('empresaId');
             if (q) {
                 localStorage.setItem('empresaId', q);
-                // atualiza a URL com o nome padronizado
                 atualizarParametroNaUrl('empresaId', q);
                 return q;
             }
 
-            // 2️⃣ Se não, tenta recuperar do localStorage
             const ls = localStorage.getItem('empresaId');
             if (ls) {
                 atualizarParametroNaUrl('empresaId', ls);
                 return ls;
             }
 
-            // 3️⃣ Caso precise buscar no Firestore (usuários)
             if (db && userUid) {
                 try {
                     const doc = await db.collection('users').doc(userUid).get();
@@ -830,11 +893,9 @@
                     }
                 } catch (e) {
                     console.warn('firestore users read err', e);
-                    // sem return — continua para tentar RTDB / fallback
                 }
             }
 
-            // 4️⃣ Caso precise buscar no Realtime Database
             if (userUid) {
                 try {
                     const snap = await firebase.database().ref('usuarios/' + userUid).once('value');
@@ -849,45 +910,285 @@
                 }
             }
 
-            // 5️⃣ Valor padrão (fallback)
             const padrao = 'empresa1';
             localStorage.setItem('empresaId', padrao);
             atualizarParametroNaUrl('empresaId', padrao);
             return padrao;
         }
 
-        // auxiliar usado acima
-        function atualizarParametroNaUrl(paramName, paramValue) {
+        // ------------------------------------------------------------------------------------
+        // ORIENTAÇÃO — CARREGAR E APLICAR AUTOMATICAMENTE
+        // ------------------------------------------------------------------------------------
+        function aplicarOrientacao(orientacao) {
+            if (orientacao === "landscape") {
+                document.body.classList.add("rotated");
+            } else {
+                document.body.classList.remove("rotated");
+            }
             try {
-                const url = new URL(window.location.href);
-                url.searchParams.set(paramName, paramValue);
-                window.history.replaceState(null, '', url.toString());
+                localStorage.setItem('painel_orientacao', orientacao);
+            } catch (e) {}
+            // chama ajuste imediato
+            ajustarMidiaParaNaoPassarDoRodape();
+        }
+
+        async function carregarOrientacao(empresaId) {
+            try {
+                if (!empresaId) {
+                    const saved = localStorage.getItem('painel_orientacao');
+                    if (saved) aplicarOrientacao(saved);
+                    return;
+                }
+                const snap = await firebase.database()
+                    .ref(`empresas/${empresaId}/painel/orientacao`)
+                    .once("value");
+                const orientacao = snap.val();
+                if (orientacao) aplicarOrientacao(orientacao);
             } catch (e) {
-                console.warn('Erro ao atualizar a URL com empresaId:', e);
+                console.warn("Erro ao carregar orientação:", e);
             }
         }
 
-
-
         /* ---------- inicialização imediata/cron ---------- */
-        // Chamadas que existiam no seu código original (mantidas)
         atualizarRelogio();
         atualizarTemperatura();
         setInterval(atualizarRelogio, 10000);
         setInterval(atualizarTemperatura, 60000);
 
-        document.addEventListener('keydown', e => {
-            if (e.key.toLowerCase() === 'v') document.body.classList.toggle('rotated');
+        // tecla V: alterna orientação e salva no Firebase (ignora se o usuário está digitando)
+        document.addEventListener('keydown', async(e) => {
+            const tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+            if (e.key && e.key.toLowerCase() === 'v') {
+                const nova = document.body.classList.contains('rotated') ? 'portrait' : 'landscape';
+                aplicarOrientacao(nova);
+
+                if (window.empresaId) {
+                    firebase.database()
+                        .ref(`empresas/${window.empresaId}/painel/orientacao`)
+                        .set(nova)
+                        .then(() => console.log('Orientação salva no Firebase:', nova))
+                        .catch(err => console.warn('Erro ao salvar orientação:', err));
+                } else {
+                    try {
+                        localStorage.setItem('painel_orientacao', nova);
+                    } catch (e) {}
+                    console.warn('empresaId ausente — orientação salva apenas localmente.');
+                }
+            }
         });
 
-        const refComando = firebase.database().ref('painel/comando');
-        refComando.on('value', snap => {
-            const comando = snap.val();
-            if (!comando) return;
-            if (comando.acao === 'reload') {
-                console.log('Comando remoto: reload');
-                window.location.reload();
+        /**
+         * Ajusta mídias para não ultrapassar / ficar por trás do rodapé.
+         * - Seleciona corretamente .rodape
+         * - Em portrait limita altura disponível (maxHeight)
+         * - Em rotated limita largura disponível (maxWidth)
+         */
+        function ajustarMidiaParaNaoPassarDoRodape() {
+            const rodape = document.querySelector('.rodape');
+            const midiaContainer = document.querySelector('#superior');
+
+            if (!rodape || !midiaContainer) return;
+
+            const isRotated = document.body.classList.contains('rotated');
+
+            if (!isRotated) {
+                // portrait: rodapé embaixo
+                const rodapeHeight = rodape.offsetHeight || 60;
+                const telaAltura = window.innerHeight;
+                const alturaDisponivel = Math.max(0, telaAltura - rodapeHeight);
+
+                // vamos garantir padding-bottom consistente (caso alguém altere)
+                midiaContainer.style.paddingBottom = rodapeHeight + 'px';
+
+                // para cada vídeo ou imagem dentro do container
+                document.querySelectorAll('#superior .media-wrap video, #superior .media-wrap img')
+                    .forEach(midia => {
+
+                        // remove ajustes anteriores
+                        midia.style.height = '';
+                        midia.style.width = '';
+                        midia.style.maxHeight = '';
+                        midia.style.maxWidth = '';
+                        midia.style.objectFit = 'contain';
+                        midia.style.transform = '';
+
+                        // define que o máximo da mídia é a área útil (alt)
+                        midia.style.maxHeight = alturaDisponivel + 'px';
+                        midia.style.maxWidth = '100%';
+
+                        // se ainda ultrapassar (casos raros), aplica leve redução
+                        const atualAltura = midia.offsetHeight || midia.getBoundingClientRect().height;
+                        if (atualAltura > alturaDisponivel) {
+                            const fator = alturaDisponivel / atualAltura;
+                            midia.style.transform = `scale(${fator})`;
+                        }
+                    });
+            } else {
+                // rotated: rodapé lateral
+                const rodapeWidth = rodape.offsetWidth || 60;
+                const telaLargura = window.innerWidth;
+                const larguraDisponivel = Math.max(0, telaLargura - rodapeWidth);
+
+                // garante padding-left consistente
+                midiaContainer.style.paddingLeft = rodapeWidth + 'px';
+
+                document.querySelectorAll('#superior .media-wrap video, #superior .media-wrap img')
+                    .forEach(midia => {
+                        midia.style.height = '';
+                        midia.style.width = '';
+                        midia.style.maxHeight = '';
+                        midia.style.maxWidth = '';
+                        midia.style.objectFit = 'contain';
+                        midia.style.transform = '';
+
+                        // define que o máximo da mídia é a área útil (larg)
+                        midia.style.maxWidth = larguraDisponivel + 'px';
+                        midia.style.maxHeight = '100%';
+
+                        // se ainda ultrapassar em largura, reduz
+                        const atualLargura = midia.offsetWidth || midia.getBoundingClientRect().width;
+                        if (atualLargura > larguraDisponivel) {
+                            const fator = larguraDisponivel / atualLargura;
+                            midia.style.transform = `scale(${fator})`;
+                        }
+                    });
             }
+        }
+
+        // roda no load
+        window.addEventListener('load', () => {
+            ajustarMidiaParaNaoPassarDoRodape();
+            // dispara carrossel etc se autenticado — já tratado em onAuthStateChanged
+        });
+
+        // roda sempre que trocar de mídia
+        document.addEventListener('DOMContentLoaded', () => {
+            setInterval(ajustarMidiaParaNaoPassarDoRodape, 500);
+        });
+
+        // roda quando girar a tela / alterar tamanho
+        window.addEventListener('resize', ajustarMidiaParaNaoPassarDoRodape);
+    </script>
+
+    <!-- TELA DE CARREGAMENTO -->
+    <!-- TELA DE CARREGAMENTO -->
+    <div id="telaCarregamento">
+        <div id="conteudoCarregamento">
+            <img src="./audio/logo.png" alt="Logo" id="logoCarregamento">
+            <div id="textoTerminal"></div>
+            <div id="cursorTerminal">█</div>
+        </div>
+    </div>
+
+    <div id="carregandoOverlay" aria-live="polite">
+        <img id="logoCarregando" src="./audio/logo.png" alt="Logo" />
+        <div id="carregandoTexto" class="brilho">
+            <span id="frase" aria-hidden="true">&gt;Iniciando sistema</span>
+            <span class="pontos" aria-hidden="true" id="pontos">
+                <span class="dot" id="dot1">.</span>
+            <span class="dot" id="dot2">.</span>
+            <span class="dot" id="dot3">.</span>
+            </span>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const frases = [{
+                txt: "Iniciando sistema",
+                time: 2800
+            }, {
+                txt: "Estabelecendo Conexão Segura",
+                time: 2200
+            }, {
+                txt: "Sincronizando com Database",
+                time: 1500
+            }, {
+                txt: "Atualizando Mídias",
+                time: 3200
+            }, {
+                txt: "Preparando interface",
+                time: 1500
+            }];
+
+            const fraseEl = document.getElementById("frase");
+            const pontosWrapper = document.getElementById("pontos");
+            const logo = document.getElementById("logoCarregando");
+            const overlay = document.getElementById("carregandoOverlay");
+            const dots = [
+                document.getElementById("dot1"),
+                document.getElementById("dot2"),
+                document.getElementById("dot3")
+            ];
+
+            const pontosSeq = ["", ".", "..", "...", "", ".", "..", "..."];
+            let pontosInterval = null;
+            let seqIdx = 0;
+
+            function startPontosInterval(speed = 400) {
+                clearInterval(pontosInterval);
+                pontosInterval = setInterval(() => {
+                    const current = pontosSeq[seqIdx];
+                    dots.forEach((d, i) => {
+                        d.style.opacity = i < current.length ? "1" : "0";
+                    });
+                    seqIdx = (seqIdx + 1) % pontosSeq.length;
+                }, speed);
+            }
+
+            function stopPontosInterval() {
+                clearInterval(pontosInterval);
+                dots.forEach(d => d.style.opacity = "0");
+            }
+
+            let phraseIndex = 0;
+
+            function showPhrase(i) {
+                fraseEl.textContent = frases[i].txt;
+                startPontosInterval(350);
+
+                setTimeout(() => {
+                    fraseEl.classList.add('fadeOutShort');
+                    pontosWrapper.classList.add('fadeOutShort');
+
+                    setTimeout(() => {
+                        fraseEl.classList.remove('fadeOutShort');
+                        pontosWrapper.classList.remove('fadeOutShort');
+                        stopPontosInterval();
+
+                        phraseIndex++;
+                        if (phraseIndex < frases.length) {
+                            setTimeout(() => showPhrase(phraseIndex), 200);
+                        } else {
+                            finishLoading();
+                        }
+                    }, 400);
+                }, frases[i].time);
+            }
+
+            function finishLoading() {
+                stopPontosInterval();
+                fraseEl.textContent = "Painel pronto 🚀";
+                setTimeout(() => {
+                    logo.style.transition = 'opacity 700ms ease';
+                    logo.style.opacity = '0.12';
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.remove(), 800);
+                }, 900);
+            }
+
+            window.addEventListener("load", () => {
+                setTimeout(() => showPhrase(0), 300);
+            });
+        })();
+
+        // sobe todos os vídeos um pouco
+        document.querySelectorAll('#superior .media-wrap video').forEach(v => {
+            v.style.transform = 'translateY(-20px)'; // ajuste conforme necessário
+            v.style.zIndex = '1000';
         });
     </script>
 </body>
