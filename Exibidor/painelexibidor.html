@@ -366,39 +366,58 @@
                 return [];
             }
 
+            // 1) Firestore (SEM orderBy)
             if (db) {
                 try {
                     const ref = db.collection('empresas').doc(empresaId).collection(colecao);
                     const snapshot = await ref.get();
                     const itens = [];
+
                     snapshot.forEach(doc => {
                         const data = doc.data() || {};
                         data._id = doc.id;
+                        data.ordem = Number(data.ordem) || 0;
                         itens.push(data);
                     });
+
+                    // ordena manualmente mesmo assim
+                    itens.sort((a, b) => a.ordem - b.ordem);
+
                     if (itens.length) return itens;
                 } catch (err) {
                     console.warn('Erro Firestore (continuando fallback RTDB):', err);
                 }
             }
 
+            // 2) Realtime Database (mantém sua ordem correta)
             try {
-                const r = await firebase.database().ref(`empresas/${empresaId}/${colecao}`).orderByChild('ordem').once('value');
-                const v = r.val() || {};
-                const items = Object.keys(v).map(k => ({
-                    id: k,
-                    ...v[k]
-                }));
-                items.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
-                if (items && items.length) return items;
+                const ref = firebase.database().ref(`empresas/${empresaId}/${colecao}`);
+                const snapshot = await ref.orderByChild('ordem').once('value');
+                const items = [];
 
+                snapshot.forEach(childSnap => {
+                    const v = childSnap.val() || {};
+                    items.push({
+                        id: childSnap.key,
+                        ...v,
+                        ordem: Number(v.ordem) || 0
+                    });
+                });
+
+                if (items.length) return items;
+
+                // fallback raiz
                 const rRoot = await firebase.database().ref(`${colecao}`).orderByChild('ordem').once('value');
-                const vRoot = rRoot.val() || {};
-                const itemsRoot = Object.keys(vRoot).map(k => ({
-                    id: k,
-                    ...vRoot[k]
-                }));
-                itemsRoot.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+                const itemsRoot = [];
+                rRoot.forEach(childSnap => {
+                    const v = childSnap.val() || {};
+                    itemsRoot.push({
+                        id: childSnap.key,
+                        ...v,
+                        ordem: Number(v.ordem) || 0
+                    });
+                });
+
                 return itemsRoot;
             } catch (e) {
                 console.warn('RTDB read error for', colecao, e);
